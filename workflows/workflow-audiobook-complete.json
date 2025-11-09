@@ -1,0 +1,371 @@
+{
+  "name": "📚 Gerador de Audiolivro Completo",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Iniciar Geração",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 400]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "book_title",
+              "value": "Meu Audiolivro"
+            },
+            {
+              "name": "author",
+              "value": "Autor Exemplo"
+            },
+            {
+              "name": "language",
+              "value": "pt-br"
+            }
+          ],
+          "array": [
+            {
+              "name": "chapters",
+              "value": [
+                "Capítulo 1: Era uma vez, em um reino distante, um jovem aventureiro que sonhava em explorar o mundo.",
+                "Capítulo 2: Sua jornada começou em uma manhã ensolarada, quando decidiu partir em busca de novos horizontes.",
+                "Capítulo 3: Ao longo do caminho, encontrou desafios que testaram sua coragem e determinação."
+              ]
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "book-config",
+      "name": "Configurar Livro",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "chapters",
+        "options": {}
+      },
+      "id": "split-chapters",
+      "name": "Dividir em Capítulos",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "values": {
+          "number": [
+            {
+              "name": "chapter_number",
+              "value": "={{ $itemIndex + 1 }}"
+            }
+          ],
+          "string": [
+            {
+              "name": "chapter_text",
+              "value": "={{ $json.chapters }}"
+            },
+            {
+              "name": "book_title",
+              "value": "={{ $('Configurar Livro').item.json.book_title }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $('Configurar Livro').item.json.language }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "prepare-chapter",
+      "name": "Preparar Capítulo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://kokoro-tts:8880/v1/audio/speech",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "kokoro"
+            },
+            {
+              "name": "input",
+              "value": "={{ $json.chapter_text }}"
+            },
+            {
+              "name": "voice",
+              "value": "af_sarah"
+            },
+            {
+              "name": "speed",
+              "value": "1.0"
+            },
+            {
+              "name": "response_format",
+              "value": "wav"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "generate-tts",
+      "name": "Gerar TTS Base",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://openvoice:8000/clone",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $('Preparar Capítulo').item.json.chapter_text }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $('Preparar Capítulo').item.json.language }}"
+            },
+            {
+              "name": "speed",
+              "value": "1.0"
+            }
+          ]
+        },
+        "options": {
+          "bodyParameter": {
+            "sendBinaryData": true,
+            "binaryPropertyName": "data",
+            "binaryPropertyOutput": "reference_audio"
+          }
+        },
+        "sendBinaryData": true,
+        "binaryPropertyName": "data"
+      },
+      "id": "clone-voice",
+      "name": "Clonar Voz do Autor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "fileName": "={{ $('Preparar Capítulo').item.json.book_title }}_capitulo_{{ $('Preparar Capítulo').item.json.chapter_number }}.wav",
+        "dataPropertyName": "data"
+      },
+      "id": "save-chapter",
+      "name": "Salvar Capítulo",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [1450, 400]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "✅ Capítulo processado"
+            },
+            {
+              "name": "chapter",
+              "value": "Capítulo {{ $('Preparar Capítulo').item.json.chapter_number }}"
+            },
+            {
+              "name": "filename",
+              "value": "={{ $('Preparar Capítulo').item.json.book_title }}_capitulo_{{ $('Preparar Capítulo').item.json.chapter_number }}.wav"
+            },
+            {
+              "name": "text_preview",
+              "value": "={{ $('Preparar Capítulo').item.json.chapter_text.substring(0, 50) }}..."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "chapter-result",
+      "name": "Resultado do Capítulo",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [1650, 400]
+    },
+    {
+      "parameters": {
+        "operation": "aggregateItems",
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "id": "aggregate",
+      "name": "Agregar Todos os Capítulos",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [1850, 400]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "final_status",
+              "value": "🎉 Audiolivro completo gerado!"
+            },
+            {
+              "name": "book_title",
+              "value": "={{ $('Configurar Livro').item.json.book_title }}"
+            },
+            {
+              "name": "total_chapters",
+              "value": "={{ $('Configurar Livro').item.json.chapters.length }}"
+            },
+            {
+              "name": "author",
+              "value": "={{ $('Configurar Livro').item.json.author }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $('Configurar Livro').item.json.language }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "final-result",
+      "name": "Resultado Final",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [2050, 400]
+    }
+  ],
+  "connections": {
+    "Iniciar Geração": {
+      "main": [
+        [
+          {
+            "node": "Configurar Livro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configurar Livro": {
+      "main": [
+        [
+          {
+            "node": "Dividir em Capítulos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dividir em Capítulos": {
+      "main": [
+        [
+          {
+            "node": "Preparar Capítulo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Capítulo": {
+      "main": [
+        [
+          {
+            "node": "Gerar TTS Base",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar TTS Base": {
+      "main": [
+        [
+          {
+            "node": "Clonar Voz do Autor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clonar Voz do Autor": {
+      "main": [
+        [
+          {
+            "node": "Salvar Capítulo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar Capítulo": {
+      "main": [
+        [
+          {
+            "node": "Resultado do Capítulo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resultado do Capítulo": {
+      "main": [
+        [
+          {
+            "node": "Agregar Todos os Capítulos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agregar Todos os Capítulos": {
+      "main": [
+        [
+          {
+            "node": "Resultado Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-11-08T00:00:00.000Z",
+  "versionId": "1"
+}

@@ -1,0 +1,179 @@
+{
+  "name": "🎤 Teste Kokoro TTS",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "text",
+              "value": "Olá! Este é um teste do Kokoro TTS em português do Brasil. A síntese de voz está funcionando perfeitamente!"
+            },
+            {
+              "name": "voice",
+              "value": "af_sarah"
+            },
+            {
+              "name": "speed",
+              "value": "1.0"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-parameters",
+      "name": "Configurar Parâmetros",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://kokoro-tts:8880/v1/audio/speech",
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "kokoro"
+            },
+            {
+              "name": "input",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "voice",
+              "value": "={{ $json.voice }}"
+            },
+            {
+              "name": "speed",
+              "value": "={{ $json.speed }}"
+            },
+            {
+              "name": "response_format",
+              "value": "wav"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "kokoro-synthesize",
+      "name": "Kokoro TTS - Sintetizar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "fileName": "=kokoro_output_{{ $now.format('YYYYMMDDHHmmss') }}.wav",
+        "dataPropertyName": "data"
+      },
+      "id": "save-audio",
+      "name": "Salvar Áudio",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "✅ Áudio gerado com sucesso!"
+            },
+            {
+              "name": "filename",
+              "value": "=kokoro_output_{{ $now.format('YYYYMMDDHHmmss') }}.wav"
+            },
+            {
+              "name": "text",
+              "value": "={{ $('Configurar Parâmetros').item.json.text }}"
+            },
+            {
+              "name": "voice",
+              "value": "={{ $('Configurar Parâmetros').item.json.voice }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "result",
+      "name": "Resultado",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Configurar Parâmetros",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configurar Parâmetros": {
+      "main": [
+        [
+          {
+            "node": "Kokoro TTS - Sintetizar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kokoro TTS - Sintetizar": {
+      "main": [
+        [
+          {
+            "node": "Salvar Áudio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salvar Áudio": {
+      "main": [
+        [
+          {
+            "node": "Resultado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-11-08T00:00:00.000Z",
+  "versionId": "1"
+}

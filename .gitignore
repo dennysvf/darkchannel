@@ -1,0 +1,58 @@
+# Arquivos de ambiente
+.env
+.env.local
+.env.production
+
+# Dados dos volumes (não commitar dados locais)
+postgres_data/
+n8n_data/
+
+# Backups
+*.sql
+*.dump
+backup/
+backups/
+
+# Logs
+*.log
+logs/
+
+# Arquivos temporários
+*.tmp
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.code-workspace
+
+# Docker
+.docker/
+
+# Workflows locais (opcional - descomente se não quiser versionar)
+# workflows/
+
+# Credenciais sensíveis
+credentials.json
+secrets.json
+
+# Outputs de testes
+tests/outputs/
+tests/*.wav
+tests/*.mp3
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Arquivos de áudio gerados
+*.wav
+*.mp3
+outputs/
+references/

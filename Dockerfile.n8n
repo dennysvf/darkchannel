@@ -1,0 +1,14 @@
+# Dockerfile customizado para n8n com ffmpeg
+FROM n8nio/n8n:1.118.2
+
+# Instalar ffmpeg e dependências
+USER root
+RUN apk add --no-cache \
+    ffmpeg \
+    && rm -rf /var/cache/apk/*
+
+# Voltar para o usuário node (padrão do n8n)
+USER node
+
+# Manter o entrypoint original
+ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]

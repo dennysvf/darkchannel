@@ -1,0 +1,18 @@
+# Ignorar dados de volumes
+postgres_data_dev
+n8n_data_dev
+mongo_data_dev
+es_data_dev
+graylog_data_dev
+
+# Ignorar arquivos de configuração local
+.env
+.env.local
+
+# Ignorar logs
+*.log
+
+# Ignorar arquivos temporários
+*.tmp
+*.swp
+*~

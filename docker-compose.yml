@@ -1,0 +1,130 @@
+# Docker Compose - DarkChannel Stack (N8N + Postgres + Kokoro TTS)
+
+name: darkchannel
+
+services:
+  # =====================================================
+  # BANCO DE DADOS
+  # =====================================================
+  postgres:
+    image: postgres:15
+    container_name: n8n-postgres
+    environment:
+      POSTGRES_DB: n8n_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    networks:
+      - n8n_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  # =====================================================
+  # N8N com FFMPEG
+  # =====================================================
+  n8n:
+    build:
+      context: .
+      dockerfile: Dockerfile.n8n
+    image: n8n-custom:latest
+    pull_policy: build
+    container_name: n8n
+    environment:
+      # Database
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n_db
+      - DB_POSTGRESDB_USER=postgres
+      - DB_POSTGRESDB_PASSWORD=postgres123
+     
+      # URLs
+      - N8N_EDITOR_BASE_URL=http://localhost:5678
+      - WEBHOOK_URL=http://localhost:5678/
+     
+      # Configurações Dev
+      - N8N_LOG_LEVEL=debug
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_VERSION_NOTIFICATIONS_ENABLED=false
+      - N8N_TEMPLATES_ENABLED=true
+      - N8N_ONBOARDING_FLOW_DISABLED=true
+     
+      # Variáveis para workflows
+      - ENVIRONMENT=development
+       
+      # Encryption Key
+      - N8N_ENCRYPTION_KEY=dev-encryption-key-change-in-prod
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./workflows:/home/node/.n8n/workflows
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - n8n_network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+
+  # =====================================================
+  # KOKORO TTS
+  # =====================================================
+  kokoro-tts:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:v0.2.2
+    container_name: kokoro-tts-cpu
+    ports:
+      - "8880:8880"
+    restart: unless-stopped
+    networks:
+      - n8n_network
+
+
+  # =====================================================
+  # OPENVOICE - Voice Cloning
+  # =====================================================
+  openvoice:
+    build:
+      context: .
+      dockerfile: Dockerfile.openvoice
+    image: darkchannel-openvoice:latest
+    pull_policy: build
+    container_name: openvoice
+    ports:
+      - "8000:8000"
+    volumes:
+      - openvoice_references:/app/references
+      - openvoice_outputs:/app/outputs
+    restart: unless-stopped
+    networks:
+      - n8n_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+
+volumes:
+  postgres_data:
+  n8n_data:
+  openvoice_references:
+  openvoice_outputs:
+
+
+networks:
+  n8n_network:
+    driver: bridge
