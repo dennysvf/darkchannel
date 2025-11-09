@@ -1,0 +1,3 @@
+{
+  "text": "<speak><prosody rate=\"0.9\">Bem-vindo ao audiolivro.</prosody><break time=\"2s\"/><prosody rate=\"slow\" pitch=\"-1\">Era uma vez, em uma pequena cidade,</prosody><break time=\"1s\"/>um menino chamado <phoneme alphabet=\"ipa\" ph=\"ˈpedɾu\">Pedro</phoneme>.<break time=\"1.5s\"/><prosody rate=\"1.2\" pitch=\"+1\">Vamos lá!</prosody></speak>"
+}

@@ -1,0 +1,7 @@
+# Garantir line endings corretos
+*.sh text eol=lf
+*.py text eol=lf
+
+# Forçar LF para scripts específicos
+src/openvoice-entrypoint.sh text eol=lf
+src/kokoro-entrypoint.sh text eol=lf

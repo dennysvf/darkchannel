@@ -1,20 +1,20 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Iniciando OpenVoice..."
-echo "ℹ️  Modo: Servidor API sem modelos pré-carregados"
-echo "ℹ️  Os modelos serão baixados sob demanda quando necessário"
+echo "Starting OpenVoice..."
+echo "Mode: API Server without pre-loaded models"
+echo "Models will be downloaded on demand"
 
-# Criar diretórios se não existirem
+# Create directories if they don't exist
 mkdir -p /app/checkpoints
 mkdir -p /app/checkpoints_v2
 mkdir -p /app/inputs
 mkdir -p /app/outputs
 mkdir -p /app/references
 
-echo "✅ Diretórios criados!"
-echo "🎤 Iniciando servidor OpenVoice na porta 8000..."
+echo "Directories created!"
+echo "Starting OpenVoice server on port 8000..."
 echo ""
 
-# Executar comando passado como argumento
+# Execute command passed as argument
 exec "$@"

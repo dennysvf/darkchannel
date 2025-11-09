@@ -89,6 +89,7 @@ cd [NOME_DA_PASTA]
 ├── 📄 docker-compose.yml           # Configuração principal do Docker
 ├── 📄 Dockerfile.n8n               # Imagem customizada do N8N com ffmpeg
 ├── 📄 Dockerfile.openvoice         # Imagem customizada do OpenVoice
+├── 📄 Dockerfile.ssml              # Imagem do serviço SSML (NOVO! 🎉)
 ├── 📄 .dockerignore                # Arquivos ignorados no build
 ├── 📄 .env.example                 # Exemplo de variáveis de ambiente
 ├── 📄 .gitignore                   # Arquivos ignorados no Git
@@ -109,9 +110,16 @@ cd [NOME_DA_PASTA]
 │   ├── start.sh                    # Iniciar stack (Linux/Mac)
 │   └── stop.sh                     # Parar stack (Linux/Mac)
 ├── 📁 src/                         # 💻 Código fonte
+│   ├── ssml/                       # 🎙️ Parser SSML (NOVO!)
+│   │   ├── parser.py               # Parser SSML principal
+│   │   ├── validator.py            # Validador SSML
+│   │   └── dictionaries/           # Dicionários de pronúncia
+│   ├── ssml_server.py              # Servidor FastAPI SSML
 │   ├── openvoice-server.py         # Servidor HTTP do OpenVoice
 │   └── openvoice-entrypoint.sh     # Script de inicialização
 ├── 📁 tests/                       # 🧪 Testes
+│   ├── ssml/                       # Testes SSML (NOVO!)
+│   │   └── test_parser.py          # Testes do parser
 │   ├── test-openvoice.py           # Testes do OpenVoice
 │   └── test_pt_br.py               # Testes em português
 ├── 📁 workflows/                   # 🔄 Workflows do N8N

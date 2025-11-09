@@ -1,0 +1,3 @@
+{
+  "text": "<speak>Olá! Vou contar uma história.<break time=\"2s\"/><prosody rate=\"slow\" pitch=\"-2\">Era uma vez, em um reino distante,</prosody><break time=\"1s\"/>um jovem príncipe chamado <phoneme alphabet=\"ipa\" ph=\"ˈpedɾu\">Pedro</phoneme>.<break time=\"1.5s\"/><prosody rate=\"fast\" pitch=\"+1\">Ele era muito corajoso!</prosody><break time=\"1s\"/><emphasis level=\"strong\">Fim do capítulo um.</emphasis></speak>"
+}

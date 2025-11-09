@@ -118,11 +118,38 @@ services:
       retries: 3
 
 
+  # =====================================================
+  # SSML SERVICE - Parser SSML para pt-BR
+  # =====================================================
+  ssml:
+    build:
+      context: .
+      dockerfile: Dockerfile.ssml
+    image: darkchannel-ssml:latest
+    pull_policy: build
+    container_name: ssml-service
+    ports:
+      - "8888:8888"
+    volumes:
+      - ssml_outputs:/app/outputs
+      - ssml_cache:/app/cache
+    restart: unless-stopped
+    networks:
+      - n8n_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+
 volumes:
   postgres_data:
   n8n_data:
   openvoice_references:
   openvoice_outputs:
+  ssml_outputs:
+  ssml_cache:
 
 
 networks:
