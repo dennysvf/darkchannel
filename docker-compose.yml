@@ -51,8 +51,21 @@ services:
       - N8N_EDITOR_BASE_URL=http://localhost:5678
       - WEBHOOK_URL=http://localhost:5678/
      
-      # Configurações Dev
+      # Encryption
+      - N8N_ENCRYPTION_KEY=dev-encryption-key-change-in-prod
+     
+      # Configurações
+      - GENERIC_TIMEZONE=America/Sao_Paulo
       - N8N_LOG_LEVEL=debug
+      
+      # MinIO Configuration
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-darkchannel-app}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-darkchannel-secret-key-123}
+      - MINIO_BUCKET_JOBS=${MINIO_BUCKET_JOBS:-darkchannel-jobs}
+      - MINIO_BUCKET_OUTPUT=${MINIO_BUCKET_OUTPUT:-darkchannel-output}
+      - MINIO_BUCKET_REFS=${MINIO_BUCKET_REFS:-darkchannel-refs}
+      - MINIO_BUCKET_TEMP=${MINIO_BUCKET_TEMP:-darkchannel-temp}
       - N8N_DIAGNOSTICS_ENABLED=false
       - N8N_VERSION_NOTIFICATIONS_ENABLED=false
       - N8N_TEMPLATES_ENABLED=true
@@ -60,6 +73,10 @@ services:
      
       # Variáveis para workflows
       - ENVIRONMENT=development
+      
+      # Node Function - Allow External Modules
+      - NODE_FUNCTION_ALLOW_EXTERNAL=moment,lodash,moment-with-locales
+      - NODE_FUNCTION_ALLOW_BUILTIN=crypto
        
       # Encryption Key
       - N8N_ENCRYPTION_KEY=dev-encryption-key-change-in-prod
@@ -81,13 +98,36 @@ services:
 
 
   # =====================================================
-  # KOKORO TTS
+  # KOKORO TTS (Original)
   # =====================================================
-  kokoro-tts:
+  kokoro-tts-cpu:
     image: ghcr.io/remsky/kokoro-fastapi-cpu:v0.2.2
     container_name: kokoro-tts-cpu
     ports:
       - "8880:8880"
+    restart: unless-stopped
+    networks:
+      - n8n_network
+
+  # =====================================================
+  # KOKORO WRAPPER (MinIO Integration)
+  # =====================================================
+  kokoro-wrapper:
+    build:
+      context: .
+      dockerfile: Dockerfile.kokoro-wrapper
+    container_name: kokoro-wrapper
+    depends_on:
+      - kokoro-tts-cpu
+      - minio
+    environment:
+      - KOKORO_INTERNAL_URL=http://kokoro-tts-cpu:8880
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-darkchannel-app}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-darkchannel-secret-key-123}
+      - MINIO_BUCKET_JOBS=${MINIO_BUCKET_JOBS:-darkchannel-jobs}
+    ports:
+      - "8881:8881"
     restart: unless-stopped
     networks:
       - n8n_network
@@ -103,11 +143,19 @@ services:
     image: darkchannel-openvoice:latest
     pull_policy: build
     container_name: openvoice
+    environment:
+      # MinIO Configuration
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-darkchannel-app}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-darkchannel-secret-key-123}
+      - MINIO_BUCKET_JOBS=${MINIO_BUCKET_JOBS:-darkchannel-jobs}
+      - MINIO_BUCKET_REFS=${MINIO_BUCKET_REFS:-darkchannel-refs}
     ports:
       - "8000:8000"
     volumes:
       - openvoice_references:/app/references
       - openvoice_outputs:/app/outputs
+      - openvoice_models:/app/checkpoints_v2
     restart: unless-stopped
     networks:
       - n8n_network
@@ -126,8 +174,13 @@ services:
       context: .
       dockerfile: Dockerfile.ssml
     image: darkchannel-ssml:latest
-    pull_policy: build
     container_name: ssml-service
+    environment:
+      # MinIO Configuration (para cache futuro)
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-darkchannel-app}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-darkchannel-secret-key-123}
+      - MINIO_BUCKET_TEMP=${MINIO_BUCKET_TEMP:-darkchannel-temp}
     ports:
       - "8888:8888"
     volumes:
@@ -143,14 +196,69 @@ services:
       retries: 3
 
 
+  # =====================================================
+  # MINIO - Object Storage
+  # =====================================================
+  minio:
+    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-04-22T22-12-26Z}
+    container_name: ${MINIO_CONTAINER_NAME:-minio}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-miniopass123}
+      MINIO_BROWSER_REDIRECT_URL: ${MINIO_BROWSER_REDIRECT_URL:-http://localhost:9001}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - n8n_network
+    restart: unless-stopped
+
+  # =====================================================
+  # MINIO SETUP - Buckets & Service Account
+  # =====================================================
+  minio-setup:
+    image: ${MINIO_MC_IMAGE:-minio/mc:latest}
+    container_name: minio-setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://minio:9000}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-miniopass123}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-darkchannel-app}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-darkchannel-secret-key-123}
+      MINIO_BUCKET_JOBS: ${MINIO_BUCKET_JOBS:-darkchannel-jobs}
+      MINIO_BUCKET_OUTPUT: ${MINIO_BUCKET_OUTPUT:-darkchannel-output}
+      MINIO_BUCKET_REFS: ${MINIO_BUCKET_REFS:-darkchannel-refs}
+      MINIO_BUCKET_TEMP: ${MINIO_BUCKET_TEMP:-darkchannel-temp}
+      MINIO_TEMP_EXPIRY_DAYS: ${MINIO_TEMP_EXPIRY_DAYS:-1}
+    volumes:
+      - ./scripts/minio-setup.sh:/setup.sh:ro
+    entrypoint: ["/bin/sh", "/setup.sh"]
+    networks:
+      - n8n_network
+
 volumes:
   postgres_data:
+    driver: local
   n8n_data:
+    driver: local
   openvoice_references:
   openvoice_outputs:
+  openvoice_models:
   ssml_outputs:
   ssml_cache:
-
+  minio_data:
+    driver: local
 
 networks:
   n8n_network:

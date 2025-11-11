@@ -1,0 +1,327 @@
+{
+  "name": "SSML + OpenVoice - Gerador de Audiolivro",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "audiobook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - Receber Texto",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "audiobook-ssml"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrair dados do webhook\nconst inputText = $input.item.json.body.text || '';\nconst voiceReference = $input.item.json.body.voice_reference || null;\nconst chapterTitle = $input.item.json.body.chapter_title || 'Capítulo';\n\n// Gerar SSML estruturado para audiolivro\nconst ssml = `<speak>\n  <prosody rate=\"0.9\">${chapterTitle}</prosody>\n  <break time=\"2s\"/>\n  ${inputText}\n</speak>`;\n\nreturn {\n  ssml: ssml,\n  voice_reference: voiceReference,\n  chapter_title: chapterTitle,\n  original_text: inputText\n};"
+      },
+      "id": "prepare-ssml",
+      "name": "Preparar SSML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://ssml-service:8888/api/v1/ssml/parse",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.ssml }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "parse-ssml",
+      "name": "Parse SSML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Processar chunks do SSML\nconst chunks = $input.item.json.chunks || [];\nconst voiceReference = $('Preparar SSML').item.json.voice_reference;\n\n// Agrupar chunks de texto consecutivos para otimizar\nconst processedChunks = [];\nlet textBuffer = '';\nlet currentMetadata = {};\n\nfor (const chunk of chunks) {\n  if (chunk.type === 'text') {\n    // Acumular texto com mesmos metadados\n    if (JSON.stringify(chunk.metadata) === JSON.stringify(currentMetadata)) {\n      textBuffer += ' ' + chunk.content;\n    } else {\n      // Salvar buffer anterior se existir\n      if (textBuffer) {\n        processedChunks.push({\n          type: 'text',\n          content: textBuffer.trim(),\n          metadata: currentMetadata,\n          voice_reference: voiceReference\n        });\n      }\n      // Iniciar novo buffer\n      textBuffer = chunk.content;\n      currentMetadata = chunk.metadata;\n    }\n  } else if (chunk.type === 'break') {\n    // Salvar buffer de texto antes da pausa\n    if (textBuffer) {\n      processedChunks.push({\n        type: 'text',\n        content: textBuffer.trim(),\n        metadata: currentMetadata,\n        voice_reference: voiceReference\n      });\n      textBuffer = '';\n      currentMetadata = {};\n    }\n    // Adicionar pausa\n    processedChunks.push(chunk);\n  }\n}\n\n// Salvar último buffer\nif (textBuffer) {\n  processedChunks.push({\n    type: 'text',\n    content: textBuffer.trim(),\n    metadata: currentMetadata,\n    voice_reference: voiceReference\n  });\n}\n\nreturn processedChunks.map((chunk, index) => ({\n  json: {\n    ...chunk,\n    chunk_index: index,\n    total_chunks: processedChunks.length\n  }\n}));"
+      },
+      "id": "process-chunks",
+      "name": "Processar Chunks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.type }}",
+              "value2": "text"
+            }
+          ]
+        }
+      },
+      "id": "filter-text-chunks",
+      "name": "Filtrar Chunks de Texto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://openvoice:8000/synthesize",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.content }}"
+            },
+            {
+              "name": "language",
+              "value": "pt-BR"
+            },
+            {
+              "name": "speed",
+              "value": "={{ $json.metadata.speed || 1.0 }}"
+            },
+            {
+              "name": "pitch",
+              "value": "={{ $json.metadata.pitch || 0 }}"
+            },
+            {
+              "name": "reference_audio",
+              "value": "={{ $json.voice_reference }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "synthesize-audio",
+      "name": "Sintetizar Áudio (OpenVoice)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Criar silêncio para pausas\nconst duration = $json.duration || 0.5;\nconst sampleRate = 22050;\nconst samples = Math.floor(duration * sampleRate);\n\n// Gerar buffer de silêncio (simplificado)\nreturn {\n  type: 'silence',\n  duration: duration,\n  samples: samples,\n  chunk_index: $json.chunk_index\n};"
+      },
+      "id": "generate-silence",
+      "name": "Gerar Silêncio",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "merge-audio-chunks",
+      "name": "Juntar Chunks de Áudio",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Preparar metadados do audiolivro\nconst chapterTitle = $('Preparar SSML').item.json.chapter_title;\nconst totalChunks = $input.all().length;\n\nconst audioFiles = $input.all()\n  .filter(item => item.json.binary)\n  .map((item, index) => ({\n    index: index,\n    chunk_index: item.json.chunk_index,\n    filename: `chunk_${String(index).padStart(3, '0')}.wav`,\n    binary: item.json.binary\n  }));\n\nreturn {\n  chapter_title: chapterTitle,\n  total_audio_chunks: audioFiles.length,\n  total_chunks: totalChunks,\n  audio_files: audioFiles,\n  status: 'ready_to_merge'\n};"
+      },
+      "id": "prepare-merge",
+      "name": "Preparar para Merge",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -f concat -safe 0 -i /tmp/concat_list.txt -c copy /tmp/audiobook_final.mp3"
+      },
+      "id": "merge-with-ffmpeg",
+      "name": "Merge com FFmpeg",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1850, 300],
+      "disabled": true,
+      "notes": "Requer FFmpeg instalado no container N8N"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"chapter_title\": \"{{ $json.chapter_title }}\",\n  \"total_chunks\": {{ $json.total_chunks }},\n  \"audio_chunks\": {{ $json.total_audio_chunks }},\n  \"message\": \"Audiolivro gerado com sucesso!\",\n  \"download_url\": \"/download/audiobook_final.mp3\"\n}",
+        "options": {}
+      },
+      "id": "response-success",
+      "name": "Resposta - Sucesso",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2050, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": false,\n  \"error\": \"{{ $json.error }}\",\n  \"message\": \"Erro ao processar audiolivro\"\n}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "response-error",
+      "name": "Resposta - Erro",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2050, 500]
+    }
+  ],
+  "connections": {
+    "Webhook - Receber Texto": {
+      "main": [
+        [
+          {
+            "node": "Preparar SSML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar SSML": {
+      "main": [
+        [
+          {
+            "node": "Parse SSML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse SSML": {
+      "main": [
+        [
+          {
+            "node": "Processar Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Processar Chunks": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Chunks de Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Chunks de Texto": {
+      "main": [
+        [
+          {
+            "node": "Sintetizar Áudio (OpenVoice)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gerar Silêncio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sintetizar Áudio (OpenVoice)": {
+      "main": [
+        [
+          {
+            "node": "Juntar Chunks de Áudio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar Silêncio": {
+      "main": [
+        [
+          {
+            "node": "Juntar Chunks de Áudio",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Juntar Chunks de Áudio": {
+      "main": [
+        [
+          {
+            "node": "Preparar para Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar para Merge": {
+      "main": [
+        [
+          {
+            "node": "Resposta - Sucesso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "SSML",
+      "id": "ssml-tag"
+    },
+    {
+      "name": "OpenVoice",
+      "id": "openvoice-tag"
+    },
+    {
+      "name": "TTS",
+      "id": "tts-tag"
+    }
+  ],
+  "meta": {
+    "instanceId": "darkchannel"
+  },
+  "pinData": {},
+  "versionId": "1.0.0"
+}

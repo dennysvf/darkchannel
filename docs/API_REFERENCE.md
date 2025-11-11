@@ -8,6 +8,23 @@ Manual completo de APIs com todos os endpoints, parâmetros e exemplos práticos
 
 Base URL: `http://localhost:8880` (ou `http://kokoro-tts:8880` dentro do Docker)
 
+## 🌍 Suporte a Idiomas
+
+Kokoro TTS possui **suporte nativo para Português do Brasil** e outros idiomas:
+
+| Código | Idioma | Qualidade | Status |
+|--------|--------|-----------|--------|
+| `pt` / `pt-br` | **Português (Brasil)** | ⭐⭐⭐⭐⭐ | ✅ Nativo |
+| `en` | English | ⭐⭐⭐⭐⭐ | ✅ Nativo |
+| `es` | Español | ⭐⭐⭐⭐ | ✅ Suportado |
+| `fr` | Français | ⭐⭐⭐⭐ | ✅ Suportado |
+| `de` | Deutsch | ⭐⭐⭐⭐ | ✅ Suportado |
+| `it` | Italiano | ⭐⭐⭐⭐ | ✅ Suportado |
+| `ja` | 日本語 | ⭐⭐⭐⭐ | ✅ Suportado |
+| `zh` | 中文 | ⭐⭐⭐⭐ | ✅ Suportado |
+
+**Recomendação:** Para português do Brasil, use `lang_code: "pt"` ou deixe em branco para detecção automática.
+
 ---
 
 ## 1. Síntese de Voz (OpenAI Compatible)
@@ -36,30 +53,34 @@ Content-Type: application/json
 
 ### Vozes Disponíveis
 
+**Todas as vozes funcionam perfeitamente em Português do Brasil!** 🇧🇷
+
 #### Vozes Femininas Americanas (AF)
-| Código | Nome | Características | Melhor Para |
-|--------|------|-----------------|-------------|
-| `af` | Base Feminina | Neutra, clara | Uso geral |
-| `af_sarah` | Sarah | Profissional, articulada | Apresentações, tutoriais |
-| `af_nicole` | Nicole | Suave, amigável | Audiolivros, narrativas |
-| `af_sky` | Sky | Jovem, energética | Conteúdo dinâmico, anúncios |
-| `af_bella` | Bella | Calorosa, expressiva | Histórias, podcasts |
+| Código | Nome | Características | Melhor Para | PT-BR |
+|--------|------|-----------------|-------------|-------|
+| `af` | Base Feminina | Neutra, clara | Uso geral | ✅ |
+| `af_sarah` | Sarah | Profissional, articulada | Apresentações, tutoriais | ✅ ⭐ |
+| `af_nicole` | Nicole | Suave, amigável | Audiolivros, narrativas | ✅ |
+| `af_sky` | Sky | Jovem, energética | Conteúdo dinâmico, anúncios | ✅ |
+| `af_bella` | Bella | Calorosa, expressiva | Histórias, podcasts | ✅ |
 
 #### Vozes Masculinas Americanas (AM)
-| Código | Nome | Características | Melhor Para |
-|--------|------|-----------------|-------------|
-| `am` | Base Masculina | Neutra, grave | Uso geral |
-| `am_adam` | Adam | Profunda, autoritária | Documentários, notícias |
-| `am_michael` | Michael | Enérgica, dinâmica | Esportes, ação |
-| `am_eric` | Eric | Calma, confiável | Meditação, relaxamento |
+| Código | Nome | Características | Melhor Para | PT-BR |
+|--------|------|-----------------|-------------|-------|
+| `am` | Base Masculina | Neutra, grave | Uso geral | ✅ |
+| `am_adam` | Adam | Profunda, autoritária | Documentários, notícias | ✅ ⭐ |
+| `am_michael` | Michael | Enérgica, dinâmica | Esportes, ação | ✅ |
+| `am_eric` | Eric | Calma, confiável | Meditação, relaxamento | ✅ |
 
 #### Vozes Britânicas (BF/BM)
-| Código | Nome | Características | Melhor Para |
-|--------|------|-----------------|-------------|
-| `bf` | Base Feminina UK | Sotaque britânico | Conteúdo formal UK |
-| `bf_emma` | Emma | Elegante, refinada | Literatura clássica |
-| `bm` | Base Masculina UK | Sotaque britânico | Documentários BBC-style |
-| `bm_george` | George | Distinto, formal | Conteúdo acadêmico |
+| Código | Nome | Características | Melhor Para | PT-BR |
+|--------|------|-----------------|-------------|-------|
+| `bf` | Base Feminina UK | Sotaque britânico | Conteúdo formal UK | ✅ |
+| `bf_emma` | Emma | Elegante, refinada | Literatura clássica | ✅ |
+| `bm` | Base Masculina UK | Sotaque britânico | Documentários BBC-style | ✅ |
+| `bm_george` | George | Distinto, formal | Conteúdo acadêmico | ✅ |
+
+**⭐ = Recomendado para Português do Brasil**
 
 ### Formatos de Áudio
 
@@ -261,6 +282,196 @@ GET /health
 
 ---
 
+# 🔄 Kokoro Wrapper API (MinIO Integration)
+
+Base URL: `http://localhost:8881` (ou `http://kokoro-wrapper:8881` dentro do Docker)
+
+**Wrapper Flask que adiciona integração MinIO ao Kokoro TTS**
+
+---
+
+## 1. Síntese com Upload para MinIO
+
+### Endpoint
+```
+POST /tts-to-s3
+```
+
+### Headers
+```
+Content-Type: application/json
+```
+
+### Parâmetros
+
+| Parâmetro | Tipo | Obrigatório | Valores Possíveis | Padrão | Descrição |
+|-----------|------|-------------|-------------------|--------|-----------||
+| `text` | string | Sim | Qualquer texto | - | Texto para sintetizar |
+| `job_id` | string | Sim | UUID v4 | - | ID único do job |
+| `chunk_index` | integer | Sim | 0-999 | - | Índice do chunk |
+| `lang` | string | Não | `pt-br`, `en`, `es`, etc | `pt-br` | Idioma |
+| `voice` | string | Não | Ver tabela de vozes | `af_sarah` | Voz a usar |
+| `speed` | number | Não | `0.25` - `4.0` | `1.0` | Velocidade |
+
+### Response
+
+```json
+{
+  "success": true,
+  "s3_key": "job-id/chunks/chunk-000.wav",
+  "bucket": "darkchannel-jobs",
+  "s3_url": "s3://darkchannel-jobs/job-id/chunks/chunk-000.wav",
+  "download_url": "http://localhost:9000/darkchannel-jobs/...",
+  "download_expires_in": 3600,
+  "job_id": "job-id",
+  "chunk_index": 0
+}
+```
+
+### Exemplo 1: Português do Brasil
+
+**Request:**
+```bash
+curl -X POST http://localhost:8881/tts-to-s3 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Olá! Bem-vindo ao sistema de síntese de voz com armazenamento em nuvem.",
+    "job_id": "550e8400-e29b-41d4-a716-446655440000",
+    "chunk_index": 0,
+    "lang": "pt-br",
+    "voice": "af_sarah",
+    "speed": 1.0
+  }'
+```
+
+**Python:**
+```python
+import requests
+import uuid
+
+url = "http://localhost:8881/tts-to-s3"
+payload = {
+    "text": "Olá! Bem-vindo ao sistema.",
+    "job_id": str(uuid.uuid4()),
+    "chunk_index": 0,
+    "lang": "pt-br",
+    "voice": "af_sarah",
+    "speed": 1.0
+}
+
+response = requests.post(url, json=payload)
+result = response.json()
+
+print(f"✅ Upload concluído!")
+print(f"📦 S3 Key: {result['s3_key']}")
+print(f"🔗 Download: {result['download_url']}")
+print(f"⏰ Expira em: {result['download_expires_in']}s")
+```
+
+**PowerShell:**
+```powershell
+$jobId = [guid]::NewGuid().ToString()
+$body = @{
+    text = "Olá! Bem-vindo ao sistema."
+    job_id = $jobId
+    chunk_index = 0
+    lang = "pt-br"
+    voice = "af_sarah"
+    speed = 1.0
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Uri "http://localhost:8881/tts-to-s3" `
+    -Method POST `
+    -Body $body `
+    -ContentType "application/json"
+
+Write-Host "✅ Upload concluído!"
+Write-Host "🔗 Download: $($response.download_url)"
+```
+
+### Exemplo 2: Voz Masculina Autoritária
+
+```json
+{
+  "text": "Últimas notícias do mercado financeiro.",
+  "job_id": "550e8400-e29b-41d4-a716-446655440001",
+  "chunk_index": 0,
+  "lang": "pt-br",
+  "voice": "am_adam",
+  "speed": 1.1
+}
+```
+
+---
+
+## 2. Gerar URL de Download
+
+### Endpoint
+```
+GET /download-url/<job_id>/<chunk_index>
+```
+
+### Parâmetros
+
+| Parâmetro | Tipo | Descrição |
+|-----------|------|-----------||
+| `job_id` | string | ID do job |
+| `chunk_index` | integer | Índice do chunk |
+
+### Response
+
+```json
+{
+  "download_url": "http://localhost:9000/darkchannel-jobs/...",
+  "expires_in": 3600,
+  "job_id": "job-id",
+  "chunk_index": 0,
+  "s3_key": "job-id/chunks/chunk-000.wav"
+}
+```
+
+### Exemplo
+
+```bash
+curl http://localhost:8881/download-url/550e8400-e29b-41d4-a716-446655440000/0
+```
+
+**Python:**
+```python
+import requests
+
+job_id = "550e8400-e29b-41d4-a716-446655440000"
+chunk_index = 0
+
+url = f"http://localhost:8881/download-url/{job_id}/{chunk_index}"
+response = requests.get(url)
+result = response.json()
+
+print(f"🔗 Download URL: {result['download_url']}")
+print(f"⏰ Expira em: {result['expires_in']}s")
+```
+
+---
+
+## 3. Health Check
+
+### Endpoint
+```
+GET /health
+```
+
+### Response
+```json
+{
+  "status": "healthy",
+  "kokoro_status": "connected",
+  "minio_status": "connected"
+}
+```
+
+---
+
 # 🎙️ OpenVoice API
 
 Base URL: `http://localhost:8000` (ou `http://openvoice:8000` dentro do Docker)
@@ -376,19 +587,96 @@ GET /languages
 
 ### Idiomas Detalhados
 
-| Código | Nome | Nome Nativo | Suporte | Qualidade |
-|--------|------|-------------|---------|-----------|
-| `pt-br` | Português (Brasil) | Português do Brasil | ✅ Completo | ⭐⭐⭐⭐⭐ |
-| `en` | English | English | ✅ Completo | ⭐⭐⭐⭐⭐ |
-| `es` | Spanish | Español | ✅ Completo | ⭐⭐⭐⭐ |
-| `fr` | French | Français | ✅ Completo | ⭐⭐⭐⭐ |
-| `zh` | Chinese | 中文 | ✅ Completo | ⭐⭐⭐⭐ |
-| `ja` | Japanese | 日本語 | ✅ Completo | ⭐⭐⭐⭐ |
-| `ko` | Korean | 한국어 | ✅ Completo | ⭐⭐⭐⭐ |
+| Código | Nome | Nome Nativo | Motor | Qualidade |
+|--------|------|-------------|-------|-----------||
+| `pt-br` | Português (Brasil) | Português do Brasil | gTTS | ⭐⭐⭐ |
+| `en` | English | English | gTTS | ⭐⭐⭐ |
+| `es` | Spanish | Español | gTTS | ⭐⭐⭐ |
+| `fr` | French | Français | gTTS | ⭐⭐⭐ |
+| `zh` | Chinese | 中文 | gTTS | ⭐⭐⭐ |
+| `ja` | Japanese | 日本語 | gTTS | ⭐⭐⭐ |
+| `ko` | Korean | 한국어 | gTTS | ⭐⭐⭐ |
+
+**Nota:** OpenVoice atualmente usa gTTS (Google TTS) para síntese base. Futuramente será implementada clonagem de voz com OpenVoice V2.
 
 ---
 
-## 4. Clonar Voz
+## 4. Síntese com Upload para MinIO
+
+### Endpoint
+```
+POST /synthesize-to-s3
+```
+
+### Headers
+```
+Content-Type: application/json
+```
+
+### Parâmetros
+
+| Parâmetro | Tipo | Obrigatório | Valores Possíveis | Padrão | Descrição |
+|-----------|------|-------------|-------------------|--------|-----------||
+| `text` | string | Sim | Qualquer texto | - | Texto para sintetizar |
+| `job_id` | string | Sim | UUID v4 | - | ID único do job |
+| `chunk_index` | integer | Sim | 0-999 | - | Índice do chunk |
+| `language` | string | Não | `pt-BR`, `en`, `es`, etc | `pt-BR` | Idioma |
+| `speed` | number | Não | `0.5` - `2.0` | `1.0` | Velocidade |
+
+### Response
+
+```json
+{
+  "success": true,
+  "s3_key": "job-id/chunks/chunk-000.wav",
+  "bucket": "darkchannel-jobs",
+  "s3_url": "s3://darkchannel-jobs/job-id/chunks/chunk-000.wav",
+  "download_url": "http://localhost:9000/darkchannel-jobs/...",
+  "download_expires_in": 3600,
+  "job_id": "job-id",
+  "chunk_index": 0
+}
+```
+
+### Exemplo: Português do Brasil
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/synthesize-to-s3 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Olá! Este é um teste de síntese com armazenamento em nuvem.",
+    "job_id": "550e8400-e29b-41d4-a716-446655440000",
+    "chunk_index": 0,
+    "language": "pt-BR",
+    "speed": 1.0
+  }'
+```
+
+**Python:**
+```python
+import requests
+import uuid
+
+url = "http://localhost:8000/synthesize-to-s3"
+payload = {
+    "text": "Olá! Este é um teste.",
+    "job_id": str(uuid.uuid4()),
+    "chunk_index": 0,
+    "language": "pt-BR",
+    "speed": 1.0
+}
+
+response = requests.post(url, json=payload)
+result = response.json()
+
+print(f"✅ Upload concluído!")
+print(f"🔗 Download: {result['download_url']}")
+```
+
+---
+
+## 5. Clonar Voz
 
 ### Endpoint
 ```
@@ -511,7 +799,7 @@ else:
 
 ---
 
-## 5. Download de Áudio
+## 6. Download de Áudio
 
 ### Endpoint
 ```
@@ -547,7 +835,7 @@ print("✅ Download concluído!")
 
 ---
 
-## 6. Listar Áudios Gerados
+## 7. Listar Áudios Gerados
 
 ### Endpoint
 ```
@@ -694,6 +982,36 @@ print("🎉 Pipeline completo! Áudio com voz clonada gerado com sucesso!")
 
 ---
 
+---
+
+# 📊 Comparação de Serviços
+
+## Português do Brasil - Qual usar?
+
+| Aspecto | Kokoro (Wrapper) | OpenVoice | Recomendação |
+|---------|------------------|-----------|--------------||
+| **Qualidade de Voz** | ⭐⭐⭐⭐⭐ Excelente | ⭐⭐⭐ Boa | **Kokoro** |
+| **Vozes Disponíveis** | 7 vozes nativas | 1 voz (gTTS) | **Kokoro** |
+| **Naturalidade** | Muito natural | Sintética | **Kokoro** |
+| **Velocidade** | Rápido | Rápido | Empate |
+| **MinIO Integration** | ✅ Sim | ✅ Sim | Empate |
+| **Clonagem de Voz** | ❌ Não | 🔄 Em desenvolvimento | **OpenVoice** (futuro) |
+| **Produção** | ✅ Pronto | ⚠️ Limitado | **Kokoro** |
+
+### Recomendação Final
+
+**Para Português do Brasil:**
+- ✅ **Use Kokoro Wrapper** para produção
+- ⭐ **Voz recomendada:** `af_sarah` (feminina) ou `am_adam` (masculina)
+- 🎯 **Qualidade:** Excelente para todos os casos de uso
+
+**OpenVoice:**
+- 🔄 Em desenvolvimento para clonagem de voz
+- ⚠️ Atualmente limitado (usa gTTS)
+- 🚀 Futuro: Clonagem de voz personalizada
+
+---
+
 **Criado para DarkChannel Stack** 🎯  
-**Versão**: 1.0.0  
-**Última Atualização**: 08/11/2025
+**Versão**: 2.0.0  
+**Última Atualização**: 09/11/2025

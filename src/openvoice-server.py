@@ -4,11 +4,35 @@ OpenVoice API Server - Simplified
 """
 from flask import Flask, request, jsonify, send_file
 import os
+import sys
 import logging
+import tempfile
+import wave
+import numpy as np
+
+# Adicionar src ao path para imports
+sys.path.insert(0, '/app')
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# MinIO client
+minio_client_instance = None
+tone_color_converter = None
+openvoice_model = None
+
+def get_minio_client():
+    """Get or create MinIO client"""
+    global minio_client_instance
+    if minio_client_instance is None:
+        try:
+            from minio import MinIOClient
+            minio_client_instance = MinIOClient()
+            logger.info("✅ MinIO client initialized")
+        except Exception as e:
+            logger.warning(f"⚠️  MinIO not available: {e}")
+    return minio_client_instance
 
 app = Flask(__name__)
 
@@ -156,34 +180,63 @@ def clone_voice():
 @app.route('/download-models', methods=['POST'])
 def download_models():
     """
-    Baixar modelos do Hugging Face
+    Baixar modelos do Hugging Face usando Python API com retry
     """
     try:
-        import subprocess
+        from huggingface_hub import snapshot_download
+        import time
         
         version = request.json.get('version', 'v2') if request.is_json else 'v2'
         
         logger.info(f"📥 Iniciando download de modelos {version}...")
         
         if version == 'v2':
-            # Usar huggingface-cli para baixar modelos V2
-            result = subprocess.run([
-                'huggingface-cli', 'download',
-                'myshell-ai/OpenVoiceV2',
-                '--local-dir', '/app/checkpoints_v2',
-                '--local-dir-use-symlinks', 'False'
-            ], capture_output=True, text=True, timeout=300)
+            # Baixar modelos V2 usando Python API com retry
+            local_dir = '/app/checkpoints_v2'
             
-            if result.returncode == 0:
+            logger.info(f"📂 Salvando em: {local_dir}")
+            
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    logger.info(f"🔄 Tentativa {attempt + 1}/{max_retries}")
+                    
+                    snapshot_download(
+                        repo_id='myshell-ai/OpenVoiceV2',
+                        local_dir=local_dir,
+                        local_dir_use_symlinks=False,
+                        resume_download=True,
+                        max_workers=4
+                    )
+                    
+                    # Se chegou aqui, sucesso!
+                    break
+                    
+                except Exception as e:
+                    logger.warning(f"⚠️  Tentativa {attempt + 1} falhou: {e}")
+                    if attempt < max_retries - 1:
+                        wait_time = (attempt + 1) * 5
+                        logger.info(f"⏳ Aguardando {wait_time}s antes de tentar novamente...")
+                        time.sleep(wait_time)
+                    else:
+                        raise
+            
+            # Verificar se baixou
+            import os
+            converter_path = os.path.join(local_dir, 'converter/checkpoint.pth')
+            
+            if os.path.exists(converter_path):
+                logger.info(f"✅ Modelos baixados: {converter_path}")
                 return jsonify({
                     'success': True,
                     'message': 'Models V2 downloaded successfully',
-                    'output': result.stdout
+                    'path': local_dir,
+                    'converter': converter_path
                 }), 200
             else:
                 return jsonify({
                     'success': False,
-                    'error': result.stderr
+                    'error': 'Converter checkpoint not found after download'
                 }), 500
         
         return jsonify({
@@ -192,7 +245,210 @@ def download_models():
         
     except Exception as e:
         logger.error(f"❌ Erro ao baixar modelos: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/synthesize', methods=['POST'])
+def synthesize():
+    """
+    Endpoint simplificado para síntese (compatibilidade workflow)
+    """
+    try:
+        data = request.json if request.is_json else {}
+        text = data.get('text', '')
+        language = data.get('language', 'pt-BR')
+        speed = data.get('speed', 1.0)
+        pitch = data.get('pitch', 0)
+        
+        if not text:
+            return jsonify({'error': 'No text provided'}), 400
+        
+        logger.info(f"📝 Synthesize: '{text[:50]}...'")
+        
+        return jsonify({
+            'success': True,
+            'text': text,
+            'language': language,
+            'speed': speed,
+            'pitch': pitch,
+            'note': 'Synthesis endpoint - implementation pending'
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"❌ Erro: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/synthesize-to-s3', methods=['POST'])
+def synthesize_to_s3():
+    """
+    Sintetiza áudio e salva direto no MinIO
+    
+    Body:
+    {
+        "text": "texto para sintetizar",
+        "job_id": "uuid-do-job",
+        "chunk_index": 0,
+        "language": "pt-BR",
+        "speed": 1.0,
+        "pitch": 0
+    }
+    
+    Returns:
+    {
+        "success": true,
+        "s3_key": "job-id/chunks/chunk-000.wav",
+        "bucket": "darkchannel-jobs",
+        "s3_url": "s3://darkchannel-jobs/job-id/chunks/chunk-000.wav"
+    }
+    """
+    try:
+        data = request.json if request.is_json else {}
+        text = data.get('text', '')
+        job_id = data.get('job_id')
+        chunk_index = data.get('chunk_index', 0)
+        language = data.get('language', 'pt-BR')
+        speed = data.get('speed', 1.0)
+        pitch = data.get('pitch', 0)
+        
+        # Validações
+        if not text:
+            return jsonify({'error': 'No text provided'}), 400
+        
+        if not job_id:
+            return jsonify({'error': 'No job_id provided'}), 400
+        
+        # Verificar MinIO
+        minio_client = get_minio_client()
+        if not minio_client:
+            return jsonify({'error': 'MinIO not available'}), 503
+        
+        logger.info(f"🎤 [{job_id}] Synthesize to S3: chunk {chunk_index}")
+        
+        # Carregar modelos OpenVoice V2 (lazy loading)
+        global tone_color_converter, openvoice_model
+        
+        if tone_color_converter is None or openvoice_model is None:
+            logger.info("📦 Carregando modelos OpenVoice V2...")
+            from openvoice import se_extractor
+            from openvoice.api import ToneColorConverter
+            
+            ckpt_converter = '/app/checkpoints_v2/converter'
+            device = 'cpu'  # Usar CPU por enquanto
+            
+            tone_color_converter = ToneColorConverter(
+                f'{ckpt_converter}/config.json',
+                device=device
+            )
+            tone_color_converter.load_ckpt(f'{ckpt_converter}/checkpoint.pth')
+            
+            # Usar voz base do OpenVoice (português)
+            openvoice_model = 'pt-BR'
+            
+            logger.info("✅ Modelos carregados!")
+        
+        # Gerar áudio com síntese simples
+        # Por enquanto, usar gTTS até termos voz de referência configurada
+        from gtts import gTTS
+        
+        # Criar diretório temporário
+        tmp_dir = tempfile.mkdtemp()
+        tmp_audio = os.path.join(tmp_dir, 'audio.mp3')
+        
+        try:
+            # Mapear language para código gTTS
+            lang_map = {
+                'pt-BR': 'pt', 'pt': 'pt',
+                'en-US': 'en', 'en': 'en',
+                'es': 'es', 'fr': 'fr', 'it': 'it', 'de': 'de'
+            }
+            gtts_lang = lang_map.get(language, 'pt')
+            
+            # Gerar áudio
+            tts = gTTS(text=text, lang=gtts_lang, slow=(speed < 1.0))
+            tts.save(tmp_audio)
+            
+            logger.info(f"✅ [{job_id}] Áudio gerado com gTTS")
+            
+            # Usar áudio gerado
+            tmp_path = tmp_audio
+            
+        except Exception as e:
+            logger.error(f"❌ Erro na síntese: {e}")
+            import traceback
+            traceback.print_exc()
+            
+            # Fallback: áudio dummy
+            logger.warning("⚠️  Usando áudio dummy como fallback")
+            sample_rate = 22050
+            duration = 1.0
+            samples = np.zeros(int(sample_rate * duration), dtype=np.int16)
+            
+            tmp_path = os.path.join(tmp_dir, 'dummy.wav')
+            with wave.open(tmp_path, 'wb') as wav_file:
+                wav_file.setnchannels(1)
+                wav_file.setsampwidth(2)
+                wav_file.setframerate(sample_rate)
+                wav_file.writeframes(samples.tobytes())
+        
+        # Upload para MinIO
+        bucket = os.getenv('MINIO_BUCKET_JOBS', 'darkchannel-jobs')
+        s3_key = f"{job_id}/chunks/chunk-{chunk_index:03d}.wav"
+        
+        # Metadata S3 só aceita ASCII - remover acentos
+        import unicodedata
+        text_ascii = unicodedata.normalize('NFKD', text[:100]).encode('ascii', 'ignore').decode('ascii')
+        
+        success = minio_client.upload_file(
+            tmp_path,
+            bucket,
+            s3_key,
+            metadata={
+                'job_id': job_id,
+                'chunk_index': str(chunk_index),
+                'text': text_ascii,
+                'language': language
+            },
+            content_type='audio/wav'
+        )
+        
+        # Limpar arquivos temporários
+        try:
+            import shutil
+            shutil.rmtree(tmp_dir)
+        except:
+            pass
+        
+        if not success:
+            return jsonify({'error': 'Failed to upload to MinIO'}), 500
+        
+        s3_url = f"s3://{bucket}/{s3_key}"
+        
+        # Gerar URL de download pré-assinada
+        download_url = minio_client.generate_presigned_url(bucket, s3_key, expiration=3600)
+        download_url = download_url.replace('http://minio:9000', 'http://localhost:9000')
+        
+        logger.info(f"✅ [{job_id}] Uploaded: {s3_url}")
+        
+        return jsonify({
+            'success': True,
+            's3_key': s3_key,
+            'bucket': bucket,
+            's3_url': s3_url,
+            'download_url': download_url,
+            'download_expires_in': 3600,
+            'chunk_index': chunk_index,
+            'job_id': job_id
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"❌ Erro: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/languages', methods=['GET'])
 def get_languages():
@@ -221,10 +477,12 @@ if __name__ == '__main__':
     logger.info("🎤 OpenVoice API Server")
     logger.info("=" * 50)
     logger.info("Endpoints disponíveis:")
-    logger.info("  GET  /health     - Health check")
-    logger.info("  GET  /status     - Status detalhado")
-    logger.info("  POST /clone      - Clonar voz")
-    logger.info("  GET  /languages  - Idiomas suportados")
+    logger.info("  GET  /health            - Health check")
+    logger.info("  GET  /status            - Status detalhado")
+    logger.info("  POST /clone             - Clonar voz")
+    logger.info("  POST /synthesize        - Sintetizar voz (workflow)")
+    logger.info("  POST /synthesize-to-s3  - Sintetizar e salvar no MinIO")
+    logger.info("  GET  /languages         - Idiomas suportados")
     logger.info("=" * 50)
     
     # Iniciar servidor

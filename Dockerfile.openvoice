@@ -69,12 +69,20 @@ RUN pip install --no-cache-dir \
     flask==3.0.0 \
     werkzeug==3.0.1
 
+# Instalar boto3 para MinIO/S3, huggingface-hub e gTTS
+RUN pip install --no-cache-dir \
+    boto3==1.34.0 \
+    botocore==1.34.0 \
+    huggingface-hub==0.20.0 \
+    gtts==2.5.0
+
 # Criar diretórios necessários
 RUN mkdir -p /app/checkpoints /app/checkpoints_v2 /app/inputs /app/outputs /app/references
 
-# Copiar arquivos de configuração
+# Copiar arquivos de configuração e módulo MinIO
 COPY src/openvoice-entrypoint.sh /app/entrypoint.sh
 COPY src/openvoice-server.py /app/server.py
+COPY src/minio /app/minio
 
 # Tornar executável
 RUN chmod +x /app/entrypoint.sh

@@ -1,0 +1,120 @@
+{
+  "name": "SSML Pipeline Completo com MinIO",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ssml-pipeline-webhook",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-ssml",
+      "name": "Webhook SSML",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 400],
+      "webhookId": "ssml-pipeline-webhook"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Preparar dados do SSML\nconst ssml = $input.item.json.body.ssml;\nconst jobId = $input.item.json.body.job_id || require('crypto').randomUUID();\nconst voiceCloning = $input.item.json.body.voice_cloning_enabled || false;\n\nreturn {\n  json: {\n    ssml: ssml,\n    job_id: jobId,\n    voice_cloning_enabled: voiceCloning,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "prepare-ssml",
+      "name": "Preparar SSML",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://ssml-service:8888/api/v1/ssml/parse",
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"{{ $json.ssml }}\"\n}",
+        "options": {}
+      },
+      "id": "process-ssml",
+      "name": "Processar SSML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extrair chunks do SSML processado\nconst response = $input.item.json;\nconst chunks = response.chunks || [];\n\n// Buscar job_id do node anterior (Preparar SSML)\nconst prepareNode = $('Preparar SSML').item.json;\nconst jobId = prepareNode.job_id;\n\n// Filtrar apenas chunks de texto (ignorar breaks)\nconst textChunks = chunks.filter(chunk => chunk.type === 'text');\n\n// Retornar cada chunk de texto como item separado\nreturn textChunks.map((chunk, index) => ({\n  json: {\n    job_id: jobId,\n    chunk_index: index,\n    text: chunk.content,\n    voice: 'af_sarah',\n    lang: 'pt-br',\n    speed: chunk.metadata?.speed || 1.0\n  }\n}));"
+      },
+      "id": "split-chunks",
+      "name": "Dividir em Chunks",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "url": "http://kokoro-wrapper:8881/tts-to-s3",
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"{{ $json.text }}\",\n  \"job_id\": \"{{ $json.job_id }}\",\n  \"chunk_index\": {{ $json.chunk_index }},\n  \"lang\": \"{{ $json.lang }}\",\n  \"voice\": \"{{ $json.voice }}\",\n  \"speed\": {{ $json.speed }}\n}",
+        "options": {}
+      },
+      "id": "generate-audio-chunks",
+      "name": "Gerar Áudio (Kokoro → MinIO)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Coletar todos os chunks gerados\nconst items = $input.all();\nconst chunks = items.map(item => item.json);\n\nreturn {\n  json: {\n    job_id: chunks[0].job_id,\n    total_chunks: chunks.length,\n    chunks: chunks.map(c => ({\n      chunk_index: c.chunk_index,\n      s3_key: c.s3_key,\n      bucket: c.bucket,\n      download_url: c.download_url\n    })),\n    message: `Pipeline SSML concluído! ${chunks.length} chunks gerados e armazenados no MinIO.`\n  }\n};"
+      },
+      "id": "aggregate-results",
+      "name": "Agregar Resultados",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "webhook-response-ssml",
+      "name": "Responder Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1450, 400]
+    }
+  ],
+  "connections": {
+    "Webhook SSML": {
+      "main": [[{ "node": "Preparar SSML", "type": "main", "index": 0 }]]
+    },
+    "Preparar SSML": {
+      "main": [[{ "node": "Processar SSML", "type": "main", "index": 0 }]]
+    },
+    "Processar SSML": {
+      "main": [[{ "node": "Dividir em Chunks", "type": "main", "index": 0 }]]
+    },
+    "Dividir em Chunks": {
+      "main": [[{ "node": "Gerar Áudio (Kokoro → MinIO)", "type": "main", "index": 0 }]]
+    },
+    "Gerar Áudio (Kokoro → MinIO)": {
+      "main": [[{ "node": "Agregar Resultados", "type": "main", "index": 0 }]]
+    },
+    "Agregar Resultados": {
+      "main": [[{ "node": "Responder Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["ssml", "tts", "minio", "pipeline"],
+  "triggerCount": 1,
+  "updatedAt": "2025-11-09T20:00:00.000Z",
+  "versionId": "1"
+}

@@ -1,0 +1,18 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Instalar dependências
+RUN pip install --no-cache-dir \
+    flask==3.0.0 \
+    requests==2.31.0 \
+    boto3==1.34.0 \
+    botocore==1.34.0
+
+# Copiar código
+COPY src/kokoro-wrapper.py /app/wrapper.py
+COPY src/minio /app/minio
+
+EXPOSE 8881
+
+CMD ["python", "wrapper.py"]
