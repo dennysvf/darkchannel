@@ -1,0 +1,88 @@
+{
+  "name": "TTS com MinIO - Exemplo Completo",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tts-minio-webhook",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "tts-minio-webhook"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Gerar Job ID único\nconst jobId = $input.item.json.job_id || require('crypto').randomUUID();\nconst text = $input.item.json.text || 'Olá! Este é um teste de síntese de voz.';\nconst voice = $input.item.json.voice || 'af_sarah';\nconst lang = $input.item.json.lang || 'pt-br';\n\nreturn {\n  json: {\n    job_id: jobId,\n    text: text,\n    voice: voice,\n    lang: lang,\n    chunk_index: 0,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "prepare-job",
+      "name": "Preparar Job",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://kokoro-wrapper:8881/tts-to-s3",
+        "method": "POST",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"text\": \"{{ $json.text }}\",\n  \"job_id\": \"{{ $json.job_id }}\",\n  \"chunk_index\": {{ $json.chunk_index }},\n  \"lang\": \"{{ $json.lang }}\",\n  \"voice\": \"{{ $json.voice }}\",\n  \"speed\": 1.0\n}",
+        "options": {}
+      },
+      "id": "kokoro-tts-to-s3",
+      "name": "Kokoro TTS → MinIO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extrair informações do MinIO\nconst response = $input.item.json;\n\nreturn {\n  json: {\n    success: response.success,\n    job_id: response.job_id,\n    chunk_index: response.chunk_index,\n    s3_key: response.s3_key,\n    bucket: response.bucket,\n    s3_url: response.s3_url,\n    download_url: response.download_url,\n    download_expires_in: response.download_expires_in,\n    message: 'Áudio gerado e armazenado no MinIO com sucesso!'\n  }\n};"
+      },
+      "id": "format-response",
+      "name": "Formatar Resposta",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "webhook-response",
+      "name": "Responder Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Preparar Job", "type": "main", "index": 0 }]]
+    },
+    "Preparar Job": {
+      "main": [[{ "node": "Kokoro TTS → MinIO", "type": "main", "index": 0 }]]
+    },
+    "Kokoro TTS → MinIO": {
+      "main": [[{ "node": "Formatar Resposta", "type": "main", "index": 0 }]]
+    },
+    "Formatar Resposta": {
+      "main": [[{ "node": "Responder Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["tts", "minio", "kokoro"],
+  "triggerCount": 1,
+  "updatedAt": "2025-11-09T20:00:00.000Z",
+  "versionId": "1"
+}

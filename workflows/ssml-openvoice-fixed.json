@@ -1,0 +1,124 @@
+{
+  "name": "SSML + OpenVoice - CORRIGIDO",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "audiobook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Acessar dados do webhook corretamente\nconst body = $input.item.json.body || $input.item.json;\nconst inputText = body.text || '';\nconst chapterTitle = body.chapter_title || 'Capítulo';\n\n// Gerar SSML estruturado\nconst ssml = `<speak>\n  <prosody rate=\"0.9\">${chapterTitle}</prosody>\n  <break time=\"2s\"/>\n  ${inputText}\n</speak>`;\n\nreturn {\n  ssml: ssml,\n  chapter_title: chapterTitle,\n  original_text: inputText\n};"
+      },
+      "id": "prepare",
+      "name": "Preparar SSML",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://ssml-service:8888/api/v1/ssml/parse",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"text\": $json.ssml } }}",
+        "options": {}
+      },
+      "id": "parse",
+      "name": "Parse SSML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Processar chunks do SSML\nconst chunks = $input.item.json.chunks || [];\nconst chapterTitle = $('Preparar SSML').item.json.chapter_title;\n\n// Retornar cada chunk como item separado\nreturn chunks.map((chunk, index) => ({\n  json: {\n    ...chunk,\n    chunk_index: index,\n    total_chunks: chunks.length,\n    chapter_title: chapterTitle\n  }\n}));"
+      },
+      "id": "process",
+      "name": "Processar Chunks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.type }}",
+              "value2": "text"
+            }
+          ]
+        }
+      },
+      "id": "filter",
+      "name": "Filtrar Texto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://openvoice:8000/synthesize",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"text\": $json.content, \"language\": \"pt-BR\", \"speed\": $json.metadata.speed || 1.0, \"pitch\": $json.metadata.pitch || 0 } }}",
+        "options": {}
+      },
+      "id": "synthesize",
+      "name": "Synthesize",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"message\": \"Audiolivro processado\", \"chapter\": $('Preparar SSML').item.json.chapter_title, \"chunks\": $('Processar Chunks').all().length } }}"
+      },
+      "id": "response",
+      "name": "Resposta",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1560, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{"node": "Preparar SSML", "type": "main", "index": 0}]]
+    },
+    "Preparar SSML": {
+      "main": [[{"node": "Parse SSML", "type": "main", "index": 0}]]
+    },
+    "Parse SSML": {
+      "main": [[{"node": "Processar Chunks", "type": "main", "index": 0}]]
+    },
+    "Processar Chunks": {
+      "main": [[{"node": "Filtrar Texto", "type": "main", "index": 0}]]
+    },
+    "Filtrar Texto": {
+      "main": [
+        [{"node": "Synthesize", "type": "main", "index": 0}],
+        [{"node": "Resposta", "type": "main", "index": 0}]
+      ]
+    },
+    "Synthesize": {
+      "main": [[{"node": "Resposta", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "tags": [],
+  "pinData": {},
+  "versionId": "1.0.0"
+}

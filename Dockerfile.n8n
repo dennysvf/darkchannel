@@ -1,14 +1,22 @@
-# Dockerfile customizado para n8n com ffmpeg
-FROM n8nio/n8n:1.118.2
+# Dockerfile customizado para n8n com ffmpeg e yt-dlp
+FROM n8nio/n8n:1.119.2
 
-# Instalar ffmpeg e dependências
 USER root
+
 RUN apk add --no-cache \
     ffmpeg \
+    ffmpeg-libs \
+    python3 \
+    py3-pip \
     && rm -rf /var/cache/apk/*
 
-# Voltar para o usuário node (padrão do n8n)
+RUN pip3 install --no-cache-dir \
+    yt-dlp \
+    --break-system-packages
+
+# Verificar instalação
+RUN yt-dlp --version && ffprobe -version
+
 USER node
 
-# Manter o entrypoint original
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]

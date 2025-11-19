@@ -36,10 +36,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
     torchaudio==2.0.2 \
     --index-url https://download.pytorch.org/whl/cpu
 
-# Instalar dependências principais (evitando av problemático)
+# Instalar dependências principais (versões compatíveis com Python 3.10)
 RUN pip install --no-cache-dir \
-    numpy==1.22.0 \
-    librosa==0.9.1 \
+    numpy==1.24.3 \
+    librosa==0.10.1 \
     pydub==0.25.1 \
     pypinyin==0.50.0 \
     inflect==7.0.0 \
