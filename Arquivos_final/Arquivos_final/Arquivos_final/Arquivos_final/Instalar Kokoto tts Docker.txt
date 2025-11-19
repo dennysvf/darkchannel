@@ -1,0 +1,3 @@
+Instalar Kokoto tts Docker
+
+docker run -p 8880:8880 --name kokoro-tts-cpu ghcr.io/remsky/kokoro-fastapi-cpu:v0.2.2

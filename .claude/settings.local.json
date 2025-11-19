@@ -3,7 +3,13 @@
     "allow": [
       "Bash(git add:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nfeat: Integração completa do MinIO com Kokoro e OpenVoice\n\nImplementa armazenamento em nuvem (S3-compatible) para todos os serviços de TTS:\n- Adiciona serviço MinIO com setup automatizado de buckets e service accounts\n- Cria Kokoro Wrapper com endpoint /tts-to-s3 para upload direto\n- Adiciona endpoint /synthesize-to-s3 no OpenVoice\n- Atualiza documentação da API com exemplos de integração MinIO\n- Configura variáveis de ambiente para todos os serviços\n- Adiciona suporte a português do Brasil em todas as vozes\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(docker login:*)",
+      "Bash(docker tag:*)",
+      "Bash(docker push:*)",
+      "Bash(docker run:*)",
+      "Bash(docker build:*)"
     ],
     "deny": [],
     "ask": []

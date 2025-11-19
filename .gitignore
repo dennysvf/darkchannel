@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.production
+n8n.dark.yml
 
 # Dados dos volumes (não commitar dados locais)
 postgres_data/

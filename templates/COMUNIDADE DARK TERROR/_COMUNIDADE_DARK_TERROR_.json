@@ -1,0 +1,529 @@
+{
+  "name": "[COMUNIDADE DARK TERROR]",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1020,
+        -140
+      ],
+      "id": "8aa6626a-1c47-4aaa-9e0b-c0062df800d3",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "model": "meta-llama/llama-4-maverick:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        -140,
+        220
+      ],
+      "id": "788730c3-78fa-4c4a-8eee-a9c71b9bc17e",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "YFokJkAtOJGogYAb",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.elevenlabs.io/v1/text-to-speech/2EiwWnXFnvU5JabPnv8n/with-timestamps?output_format=mp3_44100_128",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xi-api-key",
+              "value": "={{ $('Configuracao').item.json.Api_elevenlabs }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "model_id",
+              "value": "eleven_multilingual_v2"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -200,
+        -140
+      ],
+      "id": "41ac3c46-9759-4fbb-acf9-c1a0bfbede1e",
+      "name": "NarracaoElevenlabs"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the input items\nconst scriptGeneratorData = $('NarracaoElevenlabs').item; // Access Script Generator node\n// Get the base64 data from the Script Generator node\nconst audioBase64 = scriptGeneratorData.json.audio_base64;\n// Check if we found the audio data\nif (!audioBase64) {\n  items[0].json.error = \"Audio data not found in Script Generator\";\n  return items;\n}\n// Remove any potential data URL prefix\nconst base64Data = audioBase64.replace(/^data:audio\\/\\w+;base64,/, '');\n// Convert to binary buffer\nconst binaryData = Buffer.from(base64Data, 'base64');\n// Add to the output\nitems[0].binary = items[0].binary || {};\nitems[0].binary.data = {  // Changed from \"audio\" to \"data\"\n  data: binaryData.toString('base64'),\n  mimeType: 'audio/mp3', // Adjust mime type if needed\n  fileName: 'audio_file.mp3', // Set appropriate filename\n  fileExtension: 'mp3' // Adjust extension if needed\n};\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        20,
+        -140
+      ],
+      "id": "bb588bf1-3e5a-4047-b474-fd5f589fbca0",
+      "name": "AudioParaBinario1"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Configuracao').item.json.Audio }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        360,
+        300
+      ],
+      "id": "d6702445-e1a5-4325-83a5-ce67b3514834",
+      "name": "Download Audio"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "./audioterror.mp3",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        560,
+        300
+      ],
+      "id": "400934ba-f03b-46e0-89d4-02c13b0d9322",
+      "name": "SalvaAudio"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "./narracaoterror.mp3",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -320,
+        80
+      ],
+      "id": "899e6f12-ea44-46e4-87bf-08d8a181ed73",
+      "name": "SalvaNarracao"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Cria_roteiro').item.json.text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an AI that turns horror story transcripts into a single cinematic image prompt suitable for use with an AI image generator like Flux.\n\nInstructions:\n1. Read the full horror story transcript provided by the user.\n2. Identify the most visually intense or climactic scene — the one that best represents the horror atmosphere.\n3. Write one descriptive image prompt that captures the scene’s horror atmosphere.\n4. Focus on mood, setting, lighting, and eerie visual elements.\n5. Do not include transcript text, quotes, or explanations.\n6. Return only the prompt string. No JSON. No labels. No extra words. Just the prompt.\n\nExample Output: A crumbling Victorian mansion bathed in moonlight, its shattered windows glowing faintly as a ghostly figure looms in the fog-covered garden."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        -140,
+        80
+      ],
+      "id": "1d72ca89-6b8e-40f7-856b-59be0c8255f5",
+      "name": "Prompt_Imagem"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.together.xyz/v1/images/generations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $('Configuracao').item.json.Api_together }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"black-forest-labs/FLUX.1-schnell-Free\",\n  \"steps\": 4,\n  \"n\": 1,\n  \"height\": 1440,\n  \"width\": 1440,\n  \"guidance\": 3.5,\n  \"output_format\": \"jpeg\",\n  \"prompt\": \"{{ $json.text }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        200,
+        80
+      ],
+      "id": "96a61671-726f-452f-9303-ab79c7050d77",
+      "name": "Gera_Imagem"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.data[0].url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        360,
+        80
+      ],
+      "id": "3b29502c-7241-427e-a5af-8920c318aaa6",
+      "name": "Baixa_Imagem"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "./horror_image.jpeg",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        120,
+        300
+      ],
+      "id": "6ebc36e0-1e1d-4c13-b518-dd3ea79ec436",
+      "name": "Salva_Imagem"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7c3785d4-b3de-404b-b06f-a284c93377ef",
+              "name": "Api_together",
+              "value": "coloque aqui",
+              "type": "string"
+            },
+            {
+              "id": "28f4e7a7-0310-43e8-baea-f6f93d53b43c",
+              "name": "Audio",
+              "value": "https://blog.iaacademy.com.br/wp-content/uploads/2025/05/terror2.mp3",
+              "type": "string"
+            },
+            {
+              "id": "26960fb4-e464-4072-85d4-e1f3e3ffcdff",
+              "name": "Api_elevenlabs",
+              "value": "coloque aqui",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -800,
+        -140
+      ],
+      "id": "54605ee9-d8da-4a9a-b3ef-14434514ceba",
+      "name": "Configuracao"
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -loop 1 -i ./horror_image.jpeg \\\n-i ./narracaoterror.mp3 -i ./audioterror.mp3 \\\n-filter_complex \"[2:a]volume=0.05[bgm]; [1:a][bgm]amix=inputs=2:duration=first[aout]\" \\\n-map 0:v -map \"[aout]\" \\\n-vf \"scale=1920:1920:force_original_aspect_ratio=increase,crop=1920:1080\" \\\n-shortest -pix_fmt yuv420p output.mp4 -y"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        780,
+        300
+      ],
+      "id": "a6399436-f2f6-4d89-92f6-3dd3ff94ccb0",
+      "name": "Cria_Video"
+    },
+    {
+      "parameters": {
+        "fileSelector": "./output.mp4",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        960,
+        300
+      ],
+      "id": "742f8eec-72c4-4f07-af98-071d213c60bf",
+      "name": "Salva_video"
+    },
+    {
+      "parameters": {
+        "content": "## Configuração de variáveis",
+        "height": 440
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -860,
+        -300
+      ],
+      "typeVersion": 1,
+      "id": "02a7c625-2dd9-4c2e-9b39-7f8ad9375af3",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "Create a 3 minutes horror story",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are a horror story writing AI.  Your task is to write a complete horror story transcript based on a requested duration in minutes. The transcript should match the time by assuming an average speaking speed of 130 words per minute.\n\nRules:\n- Do not include a title, word count, or any formatting.\n- Only return the full story transcript as plain text.\n- Match the requested duration using approximate word count (duration_in_minutes * 130).\n- The story should be atmospheric, suspenseful, and unsettling, ending with a twist or open-ended fear.\n- Avoid excessive gore — focus on psychological horror and eerie description.\n\nWhen the user provides a topic or theme, use it to guide the setting or threat. If no theme is given, choose a classic horror setting (e.g., foggy woods, abandoned hospital, eerie mirror).\n\nOutput: Return only the story transcript. No quotes, labels, or explanations.\n"
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        -540,
+        -140
+      ],
+      "id": "d9585fe4-bdb2-43ba-9bff-3ad2f9766ad5",
+      "name": "Cria_roteiro"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -600,
+        100
+      ],
+      "id": "912d8c10-5328-4cee-8167-11b750dbcb20",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "JO96jSLNRfkkZY7y",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1040,
+        80
+      ],
+      "id": "ff6c0912-2792-42f7-b22b-0603c1899cba",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Configuracao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Prompt_Imagem",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NarracaoElevenlabs": {
+      "main": [
+        [
+          {
+            "node": "AudioParaBinario1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AudioParaBinario1": {
+      "main": [
+        [
+          {
+            "node": "SalvaNarracao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Audio": {
+      "main": [
+        [
+          {
+            "node": "SalvaAudio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SalvaAudio": {
+      "main": [
+        [
+          {
+            "node": "Cria_Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SalvaNarracao": {
+      "main": [
+        [
+          {
+            "node": "Prompt_Imagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt_Imagem": {
+      "main": [
+        [
+          {
+            "node": "Gera_Imagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gera_Imagem": {
+      "main": [
+        [
+          {
+            "node": "Baixa_Imagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baixa_Imagem": {
+      "main": [
+        [
+          {
+            "node": "Salva_Imagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Salva_Imagem": {
+      "main": [
+        [
+          {
+            "node": "Download Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuracao": {
+      "main": [
+        [
+          {
+            "node": "Cria_roteiro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cria_Video": {
+      "main": [
+        [
+          {
+            "node": "Salva_video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cria_roteiro": {
+      "main": [
+        [
+          {
+            "node": "NarracaoElevenlabs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Cria_roteiro",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "75861b3f-391e-432e-9096-953a8236fa7e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "86d0b539cdbfaefdd305e9f4d9320d6449af6a05b20f421bc7ca5b2501068fb2"
+  },
+  "id": "C2rvYDpGMt3CogNz",
+  "tags": []
+}

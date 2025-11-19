@@ -1,0 +1,1069 @@
+{
+  "name": "[COMUNIDADE] - Template Biblico",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Configuração e script\n\n- Prompt otimizao para vídeos em inglês",
+        "height": 540,
+        "width": 1040,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -340,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "fff62df7-663a-4aa7-84b6-eabe26d2a7fe",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "gpt-4o"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -140,
+        220
+      ],
+      "id": "7bd8fb7a-f534-429c-b658-b44ba45c2ea3",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "JO96jSLNRfkkZY7y",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"salmoescolhido\": \"\",\n\t\"texto\": \"\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        20,
+        220
+      ],
+      "id": "9c536b29-9adc-41c8-aa5e-8b42f07c3b27",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the input items\nconst scriptGeneratorData = $('NarracaoElevenlabs').item; // Access Script Generator node\n// Get the base64 data from the Script Generator node\nconst audioBase64 = scriptGeneratorData.json.audio_base64;\n// Check if we found the audio data\nif (!audioBase64) {\n  items[0].json.error = \"Audio data not found in Script Generator\";\n  return items;\n}\n// Remove any potential data URL prefix\nconst base64Data = audioBase64.replace(/^data:audio\\/\\w+;base64,/, '');\n// Convert to binary buffer\nconst binaryData = Buffer.from(base64Data, 'base64');\n// Add to the output\nitems[0].binary = items[0].binary || {};\nitems[0].binary.data = {  // Changed from \"audio\" to \"data\"\n  data: binaryData.toString('base64'),\n  mimeType: 'audio/mp3', // Adjust mime type if needed\n  fileName: 'audio_file.mp3', // Set appropriate filename\n  fileExtension: 'mp3' // Adjust extension if needed\n};\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2320,
+        -20
+      ],
+      "id": "58f3ae8d-bd87-4f6f-942a-7094a124c780",
+      "name": "AudioParaBinario1"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "message.content",
+        "options": {}
+      },
+      "id": "f3d01a11-839e-4c93-b5aa-4c761de58453",
+      "name": "Convert to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1600,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://blog.iaacademy.com.br/wp-json/wp/v2/media/{{ $json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "options": {}
+      },
+      "id": "261ff387-0b21-4c2f-bae2-380d4f4289b4",
+      "name": "link do txt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2060,
+        -20
+      ],
+      "credentials": {
+        "wordpressApi": {
+          "id": "VvJQuHqAGhz6oOI3",
+          "name": "Wordpress account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://blog.iaacademy.com.br/wp-json/wp/v2/media   ",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-disposition",
+              "value": "=attachment; filename={{ $binary['data'].fileName }}.file.srt"
+            },
+            {
+              "name": "content-type",
+              "value": "=srt"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "21859dc7-d99f-40aa-ae97-0ea047f522f8",
+      "name": "upload de txt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1820,
+        -20
+      ],
+      "credentials": {
+        "wordpressApi": {
+          "id": "dg1BOFR99poEoUo4",
+          "name": "Wordpress account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "629ab86b-932c-4648-a940-a2d6be4aa790",
+              "name": "message.content",
+              "value": "={{ $json.srt.replaceAll(\"```\",\"\") }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fcde7f68-569c-4885-a1c8-e50797f07542",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://blog.iaacademy.com.br/wp-json/wp/v2/media   ",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "wordpressApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-disposition",
+              "value": "=attachment; filename=audio.mp3"
+            },
+            {
+              "name": "content-type",
+              "value": "=mp3"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "fd0397c6-cdd5-4e99-9059-f5383f9f301d",
+      "name": "upload de Audio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2600,
+        -20
+      ],
+      "credentials": {
+        "wordpressApi": {
+          "id": "VvJQuHqAGhz6oOI3",
+          "name": "Wordpress account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const imagePath = $input.first().json.imagem;\nconst audioPath = $input.first().json.audio;\nconst bgAudioPath = $input.first().json.Fundo;\nconst subtitleURL = $input.first().json.srt;\n\nconst subtitleLocalPath = '/tmp/legendas.srt';\n\n// Primeiro, baixe a legenda com wget\nconst downloadCommand = `wget \"${subtitleURL}\" -O ${subtitleLocalPath} && `;\n\n// Comando FFmpeg\nconst ffmpegCommand = `ffmpeg -hide_banner \\\n-loop 1 -i \"${imagePath}\" \\\n-itsoffset 0.5 -i \"${audioPath}\" \\\n-itsoffset 0.5 -i \"${bgAudioPath}\" \\\n-vf \"fps=1,scale=1280:720,subtitles='${subtitleLocalPath}':charenc=UTF-8:force_style='FontName=DejaVu Serif,FontSize=42,PrimaryColour=&H00FFFFFF&,OutlineColour=&H40404000&,BorderStyle=1,Outline=3,Shadow=1,Bold=1,Alignment=2,MarginV=100'\" \\\n-filter_complex \"[2:a]volume=0.5[bg]; [1:a][bg]amix=inputs=2:duration=first:dropout_transition=2[aout]\" \\\n-map 0:v:0 -map \"[aout]\" \\\n-c:v libx264 -preset ultrafast -crf 30 \\\n-c:a aac -b:a 128k \\\n-shortest \\\n-pix_fmt yuv420p \\\n-y output.mp4`;\n\nconst finalCommand = downloadCommand + ffmpegCommand;\n\nreturn [{\n  json: {\n    command: finalCommand\n  }\n}];\n"
+      },
+      "id": "98feaffc-092c-41b9-88bf-a6e8cb7fb07f",
+      "name": "Generate FFmpeg Command",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1220,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "command": "={{ $json.command }}"
+      },
+      "id": "b85c5ede-cff0-4d18-87bf-423ccfed09de",
+      "name": "Run FFmpeg",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1640,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "fileSelector": "output.mp4",
+        "options": {}
+      },
+      "id": "bfc68fd9-3c01-4bd2-b1ec-ad087c3defb2",
+      "name": "Read/Write Files from Disk",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.1,
+      "position": [
+        1280,
+        1200
+      ],
+      "id": "ecbbd5e1-5f66-4e01-ba5b-1717360c8152",
+      "name": "Deepseek",
+      "credentials": {
+        "openAiApi": {
+          "id": "8LRhej9xEz9RuG3T",
+          "name": "conta2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+      "typeVersion": 1,
+      "position": [
+        820,
+        1240
+      ],
+      "id": "246d119f-7b7a-44b4-827c-837839013a47",
+      "name": "Auto-fixing Output Parser3"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"input\": {\n    \"video_topic\": \"Building AI Agents in n8n\",\n    \"search_query\": \"top performing YouTube videos AND trending hashtags for [topic] AI agent automation and [tools] n8n, Tavily and LLM workflows in last 3 months\"\n  },\n  \"output\": {\n    \"relevant_keywords\": [\n      \"ai agents n8n\",\n      \"workflow automation\",\n      \"n8n tutorial\",\n      \"automation workflow\",\n      \"n8n automation\"\n    ],\n    \"relevant_hashtags\": [\n      \"#AIAutomation\",\n      \"#n8n\",\n      \"#WorkflowAutomation\",\n      \"#NoCode\",\n      \"#TechTutorial\"\n    ]\n  },\n  \"metadata\": {\n    \"keyword_metrics\": [\n      {\n        \"keyword\": \"ai agents n8n\",\n        \"monthly_search_volume\": 1200,\n        \"trend_direction\": \"up\"\n      },\n      {\n        \"keyword\": \"workflow automation\",\n        \"monthly_search_volume\": 2400,\n        \"trend_direction\": \"stable\"\n      },\n      {\n        \"keyword\": \"n8n tutorial\",\n        \"monthly_search_volume\": 800,\n        \"trend_direction\": \"up\"\n      },\n      {\n        \"keyword\": \"automation workflow\",\n        \"monthly_search_volume\": 1800,\n        \"trend_direction\": \"stable\"\n      },\n      {\n        \"keyword\": \"n8n automation\",\n        \"monthly_search_volume\": 1500,\n        \"trend_direction\": \"up\"\n      }\n    ],\n    \"hashtag_metrics\": [\n      {\n        \"hashtag\": \"#AIAutomation\",\n        \"usage_count\": 15000,\n        \"popularity\": \"high\"\n      },\n      {\n        \"hashtag\": \"#n8n\",\n        \"usage_count\": 8000,\n        \"popularity\": \"medium\"\n      },\n      {\n        \"hashtag\": \"#WorkflowAutomation\",\n        \"usage_count\": 12000,\n        \"popularity\": \"high\"\n      },\n      {\n        \"hashtag\": \"#NoCode\",\n        \"usage_count\": 25000,\n        \"popularity\": \"high\"\n      },\n      {\n        \"hashtag\": \"#TechTutorial\",\n        \"usage_count\": 5000,\n        \"popularity\": \"medium\"\n      }\n    ]\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        880,
+        1400
+      ],
+      "id": "8100067d-b8dd-487e-8b18-9ed5945dfe6e",
+      "name": "Structured Output Parser5"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+      "typeVersion": 1,
+      "position": [
+        1080,
+        1420
+      ],
+      "id": "65223cb5-c32a-4367-b838-589060e0f7cd",
+      "name": "Auto-fixing Output Parser1"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n      \"title\": \"title\"\n  \n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1260,
+        1540
+      ],
+      "id": "a78fbff7-c07b-4a0d-90d0-95b2dcd947c3",
+      "name": "Structured Output Parser2"
+    },
+    {
+      "parameters": {
+        "name": "video",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1_qyeZjCkL6niiJJshgewwBSCd59mcPdX",
+          "mode": "list",
+          "cachedResultName": "AnimalFuryy",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1_qyeZjCkL6niiJJshgewwBSCd59mcPdX"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2260,
+        560
+      ],
+      "id": "702af430-eb68-48dd-a300-d155336b31e7",
+      "name": "Google Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "OGrhIUliwbv2emL7",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "share",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "permissionsUi": {
+          "permissionsValues": {
+            "role": "reader",
+            "type": "anyone"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2600,
+        560
+      ],
+      "id": "cc8fc821-d3ee-4e56-89e3-bc6c1f550d5d",
+      "name": "Google Drive1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "OGrhIUliwbv2emL7",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -580,
+        0
+      ],
+      "id": "5228d7c7-015c-4c93-8a97-4e10003bb592",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Generate a title  for Youtube Video based on this content topic: {{ $('DefineSalmo').item.json.output.salmoescolhido }}\n\nvocê deve seguir esse padrão:\n\nOracion de la Mañana De Hoy Lunes 21 de Abril - {{ $('DefineSalmo').item.json.output.salmoescolhido }}\n\nSubstitua o salmo pelo: {{ $('DefineSalmo').item.json.output.salmoescolhido }}\n\nE a data do dia e mês por {{ $now }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an expert at creating compelling, SEO-optimized titles for technical content focused on AI, automation, and n8n. Your titles drive clicks while maintaining technical credibility and accuracy. Key Requirements:  Maximum 60 characters to prevent truncation Front-load important keywords Balance creativity with clarity Target technical professionals Maintain credibility  Emotional Triggers & Power Words:  Time savings: \"Quick\", \"Rapid\", \"Instant\" Efficiency: \"Streamline\", \"Optimize\", \"Automate\" Achievement: \"Master\", \"Transform\", \"Unlock\" Technical value: \"Scalable\", \"Robust\", \"Enterprise-grade\" Urgency: \"Essential\", \"Critical\", \"Must-have\" Innovation: \"Revolutionary\", \"Game-changing\", \"Next-gen\"  High-Performing Title Structures:  Problem-Solution Format  \"Why Your [X] Isn't [Desired Outcome]\" \"How to Fix [Common Problem] with [Solution]\" \"Stop [Pain Point]: Use [Solution] Instead\"   Specific Value Format  \"[X] Ways to [Achieve Goal] in [Timeframe]\" \"Build [Solution] That Handles [X] Tasks Daily\" \"Automate [X] Hours of Work in [Y] Minutes\"   Technical Tutorial Format  \"How to Integrate [Tool] with [Tool] [Implementation Time]\" \"[X]-Step [Tool] Setup for [Specific Use Case]\" \"Building [Solution] with [Tools] [Tutorial Type]\". Ensure to include relevant keywords naturally, they will be passed in the inputs.\n\nHere are some examples of high performing titles:\n\nTechnical Tutorial Style\n1. \"Top AI Agents in n8n: A Comprehensive Guide to Automating with AI\"\n2. \"Create 100% Local No Code AI Agents with N8N and Ollama in 10...\"\n3. \"n8n Masterclass: Build AI Agents & Automate Workflows\"\n\nProblem-Solution Style\n1. \"Build your first AI AGENT as A Total BEGINNER! (NO CODE)\"\n2. \"10 n8n Tips in 10 Minutes to 10x Your AI Automations\"\n3. \"How to Build a Personal Assistant AI Agent in n8n\""
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        900,
+        1040
+      ],
+      "id": "1cb20305-f966-4619-ba7b-5adcc319a3a9",
+      "name": "CriaTitulo"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Generate hashtags for an youtube video with this title {{ $json.output.title }}\n\nreturn only hashtags\n\n",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are an expert at creating highly optimized YouTube descriptions for technical content, specifically in AI, automation, and n8n. You excel at balancing SEO optimization with engaging content that drives viewer action. Core Capabilities:  Opening Hook Excellence:   Craft compelling first 150 characters Use different keywords than title Focus on searchable technical terms Hook viewers with clear value proposition   SEO Optimization:   Use 2-3 target keywords naturally Place main keyword in first three sentences Include related keywords for discoverability Minimum 250 words for technical tutorials Front-load technical specifications   Engagement Optimization:   Strategic emoji placement Clear calls-to-action Professional formatting Visual breaks in content Engagement prompts  Content Structure Rules:  Above \"Show More\":   Unique hook different from title Primary CTA with link Clear value proposition Technical benefit statement   Main Description:   Secondary CTAs Resource links Social connections Technical prerequisites Implementation details   Closing Elements:   3 relevant hashtags (passed in the inputs) Next video suggestion Final engagement prompt Related content links. Ensure to include relevant keywords naturally, they will be passed in the inputs."
+            }
+          ]
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.5,
+      "position": [
+        1560,
+        1060
+      ],
+      "id": "2ec47199-4a5e-4ab4-887d-ae7fb5ec7928",
+      "name": "CriaHashtags"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Você é um especialista em salmos da Bíblia. Primeiro, gere um número inteiro aleatório entre 1 e 150. Em seguida, use esse número para selecionar o salmo correspondente da Bíblia. Retorne apenas o texto completo desse salmo, no idioma espanhol, sem adicionar explicações, títulos ou comentários. O salmo deve ser exatamente como está na Bíblia. Seja preciso e fiel ao texto bíblico.\n\nImportante:\n- O número do salmo deve ser diferente a cada execução.\n- Apenas o texto do salmo em espanhol deve ser retornado.\n",
+        "hasOutputParser": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        -120,
+        0
+      ],
+      "id": "23995648-a537-4f18-a9a4-3df832f120eb",
+      "name": "DefineSalmo"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Você é um especialista em salmos em espanhol, gere a explicação desse salmo  {{ $json.output.texto }}. De uma forma bem simples e precisa ser um texto longo para no minimo 5min de leitura. Não pode ter marcadores como ** pode usar \" mas nunca asteriscos ou algo assim\n\nCriar no idioma espanhol\nRetorne apenas a explixação sem nem uma outra coisa",
+        "hasOutputParser": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        360,
+        0
+      ],
+      "id": "b43114f6-5fba-43ba-b4d3-a6220e063d33",
+      "name": "GeraConteudo"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "33ddb106-3f1d-4dc0-bb28-edd13653c6fd",
+              "name": "imagem",
+              "value": "https://images.squarespace-cdn.com/content/v1/5148b380e4b0106646129f8e/1501243003297-2O5ZT6C35Z6CPAR70GY6/0001-es-la-biblia-inspirada-por-dios-parte-2.jpg",
+              "type": "string"
+            },
+            {
+              "id": "7822feed-77bf-47f6-b8bd-c690a881080e",
+              "name": "audio",
+              "value": "={{ $json.guid.raw }}",
+              "type": "string"
+            },
+            {
+              "id": "f679a841-96ca-446f-959c-dd2ffd4bb983",
+              "name": "srt",
+              "value": "={{ $('link do txt').item.json.guid.rendered }}",
+              "type": "string"
+            },
+            {
+              "id": "e065f3a7-6e9c-4250-8fb0-7d7774166cd8",
+              "name": "Fundo",
+              "value": "https://blog.iaacademy.com.br/wp-content/uploads/2025/04/audio-4.mp3",
+              "type": "string"
+            },
+            {
+              "id": "9e907ddb-3340-4157-8319-01602668bb5a",
+              "name": "Titulo",
+              "value": "={{ $('DefineSalmo').item.json.output.salmoescolhido }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        740,
+        560
+      ],
+      "id": "e20e435b-7447-406f-b65d-8bd2cbe754cb",
+      "name": "Set Urls"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.elevenlabs.io/v1/text-to-speech/2EiwWnXFnvU5JabPnv8n/with-timestamps?output_format=mp3_44100_128",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "xi-api-key",
+              "value": "SUACHAVE"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "text",
+              "value": "={{ $('DefineSalmo').item.json.output.texto }}{{ $json.text }}"
+            },
+            {
+              "name": "model_id",
+              "value": "eleven_multilingual_v2"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        820,
+        0
+      ],
+      "id": "04afe3c6-2295-4ebd-a2bb-91b072e696e1",
+      "name": "NarracaoElevenlabs"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  try {\n    const data = item.json;\n    let captions = [];\n\n    if (\n      data.normalized_alignment &&\n      data.normalized_alignment.characters &&\n      data.normalized_alignment.character_start_times_seconds &&\n      data.normalized_alignment.character_end_times_seconds\n    ) {\n      const characters = data.normalized_alignment.characters;\n      const startTimes = data.normalized_alignment.character_start_times_seconds;\n      const endTimes = data.normalized_alignment.character_end_times_seconds;\n\n      const minLength = Math.min(characters.length, startTimes.length, endTimes.length);\n\n      const words = [];\n      let currentWord = \"\";\n      let currentWordStart = 0;\n\n      for (let i = 0; i < minLength; i++) {\n        const char = characters[i];\n\n        if (char === \" \" && currentWord.trim()) {\n          words.push({\n            word: currentWord.trim(),\n            start: currentWordStart,\n            end: endTimes[i]\n          });\n          currentWord = \"\";\n        } else if (char !== \" \") {\n          if (currentWord === \"\") {\n            currentWordStart = startTimes[i];\n          }\n          currentWord += char;\n        }\n      }\n\n      if (currentWord.trim()) {\n        words.push({\n          word: currentWord.trim(),\n          start: currentWordStart,\n          end: endTimes[minLength - 1]\n        });\n      }\n\n      for (let i = 0; i < words.length; i += 5) {\n        const chunk = words.slice(i, Math.min(i + 5, words.length));\n        if (chunk.length > 0) {\n          const chunkText = chunk\n            .map(w => w.word.charAt(0).toUpperCase() + w.word.substring(1))\n            .join(\" \")\n            .replace(/--/g, \"\")\n            .replace(/\\s+/g, \" \")\n            .trim();\n\n          captions.push({\n            words: chunkText,\n            start: chunk[0].start,\n            end: chunk[chunk.length - 1].end\n          });\n        }\n      }\n    }\n\n    // Garantir que o primeiro bloco tenha pelo menos 1 segundo de duração\n    if (captions.length > 0) {\n      const firstCaption = captions[0];\n      const duration = firstCaption.end - firstCaption.start;\n\n      if (duration < 1) {\n        // Ajustar o final para 1 segundo após o início, caso a duração seja menor que 1 segundo\n        firstCaption.end = firstCaption.start + 1;\n      }\n    }\n\n    function toSrtTime(seconds) {\n      const date = new Date(seconds * 1000);\n      return date.toISOString().substr(11, 8) + ',' + String(date.getMilliseconds()).padStart(3, '0');\n    }\n\n    const srt = captions.map((caption, index) => {\n      return `${index + 1}\n${toSrtTime(caption.start)} --> ${toSrtTime(caption.end)}\n${caption.words}\n\n`;\n    }).join('');\n\n    return {\n      json: {\n        srt: srt.trim()\n      }\n    };\n\n  } catch (error) {\n    console.log('Error processing captions:', error);\n    return {\n      json: {\n        srt: \"\"\n      }\n    };\n  }\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        0
+      ],
+      "id": "d9831868-7b6f-4fe6-8090-a27595372479",
+      "name": "TransformaLegenda"
+    },
+    {
+      "parameters": {
+        "content": "## Audio e legenda",
+        "height": 540,
+        "width": 2060,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        700,
+        -160
+      ],
+      "typeVersion": 1,
+      "id": "f8d5491c-bf94-4c27-8465-e598bd5e3aa5",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Criação do arquivo",
+        "height": 540,
+        "width": 2060,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        700,
+        380
+      ],
+      "typeVersion": 1,
+      "id": "e4d5b663-9b84-481c-a405-86a3b4c907cb",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Postagem Youtube",
+        "height": 780,
+        "width": 2060,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        700,
+        920
+      ],
+      "typeVersion": 1,
+      "id": "c656e10e-8600-438a-8935-246fa8a87329",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.googleapis.com/upload/youtube/v3/videos?part=snippet,status&uploadType=resumable",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Upload-Content-Type",
+              "value": "video/webm"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "RAW/JSON",
+        "body": "={\n  \"snippet\": {\n    \"title\": \"{{ $('CriaTitulo').item.json.output.title }}\",\n    \"description\": \"{{ $json.text }}\",\n    \"categoryId\": \"24\",\n    \"defaultLanguage\": \"en\",\n    \"defaultAudioLanguage\": \"en\"\n  },\n  \"status\": {\n    \"privacyStatus\": \"public\",\n    \"license\": \"youtube\",\n    \"embeddable\": true,\n    \"publicStatsViewable\": true,\n    \"madeForKids\": false\n  }\n}\n",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "id": "2ee89dc6-14c8-424a-ab18-6f8550578a9e",
+      "name": "CriaURL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2060,
+        1060
+      ],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "N4etYJJxC5RBzEY3",
+          "name": "Salmos Poderosos"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Google Drive').item.json.webContentLink }}",
+        "options": {}
+      },
+      "id": "9e3cde2a-24cd-4870-9f1c-d44beca8d5d7",
+      "name": "DownloadArquivo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2300,
+        1060
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $node[\"CriaURL\"].json.headers.location }} ",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "youTubeOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "video/webm"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "085caaa5-d4f2-421d-bf92-0421d15ac04c",
+      "name": "FinalizaUpload",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2480,
+        1060
+      ],
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "lI3XXvzWiyIB1XS8",
+          "name": "Youtube AC"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -580,
+        240
+      ],
+      "id": "d1229386-b8cc-4cfb-854e-4b10b3886108",
+      "name": "Schedule Trigger"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "DefineSalmo",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "GeraConteudo",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "DefineSalmo",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AudioParaBinario1": {
+      "main": [
+        [
+          {
+            "node": "upload de Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "upload de txt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "link do txt": {
+      "main": [
+        [
+          {
+            "node": "AudioParaBinario1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "upload de txt": {
+      "main": [
+        [
+          {
+            "node": "link do txt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "upload de Audio": {
+      "main": [
+        [
+          {
+            "node": "Set Urls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate FFmpeg Command": {
+      "main": [
+        [
+          {
+            "node": "Run FFmpeg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run FFmpeg": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Google Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deepseek": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Auto-fixing Output Parser3",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "CriaTitulo",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Auto-fixing Output Parser1",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "CriaHashtags",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser5": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Auto-fixing Output Parser3",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto-fixing Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "CriaTitulo",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser2": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Auto-fixing Output Parser1",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive": {
+      "main": [
+        [
+          {
+            "node": "Google Drive1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Drive1": {
+      "main": [
+        [
+          {
+            "node": "CriaTitulo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "DefineSalmo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CriaTitulo": {
+      "main": [
+        [
+          {
+            "node": "CriaHashtags",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CriaHashtags": {
+      "main": [
+        [
+          {
+            "node": "CriaURL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DefineSalmo": {
+      "main": [
+        [
+          {
+            "node": "GeraConteudo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GeraConteudo": {
+      "main": [
+        [
+          {
+            "node": "NarracaoElevenlabs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Urls": {
+      "main": [
+        [
+          {
+            "node": "Generate FFmpeg Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NarracaoElevenlabs": {
+      "main": [
+        [
+          {
+            "node": "TransformaLegenda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TransformaLegenda": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CriaURL": {
+      "main": [
+        [
+          {
+            "node": "DownloadArquivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DownloadArquivo": {
+      "main": [
+        [
+          {
+            "node": "FinalizaUpload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "DefineSalmo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "31c4a27a-df86-40a1-8167-2b7b9f5cd1c8",
+  "meta": {
+    "instanceId": "86d0b539cdbfaefdd305e9f4d9320d6449af6a05b20f421bc7ca5b2501068fb2"
+  },
+  "id": "K8yblnKWujGs3ida",
+  "tags": []
+}

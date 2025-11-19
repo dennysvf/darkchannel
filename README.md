@@ -450,6 +450,18 @@ docker-compose up -d
 
 ---
 
+## Imagnes no docker.io
+
+ n8n customizado:  docker pull autotrend/dark-channel-n8n:latest
+
+ openvoice: docker pull autotrend/dark-channel-openvoice:latest 
+
+ kokoro-tts-cpu: docker pull autotrend/dark-channel-kokoro-tts-cpu:latest
+
+ minio: docker pull autotrend/dark-channel-minio:latest
+ 
+---
+
 ## 🆘 Suporte
 
 Se encontrar problemas:

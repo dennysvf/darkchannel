@@ -1,0 +1,688 @@
+{
+  "name": "[Exemplo live lofi]",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        384
+      ],
+      "id": "52feadf8-0c0f-4cef-99bc-05b8238d34a2",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://apibox.erweima.ai/api/v1/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer f9db8c502604cb958dbf0c62ab9aab97"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "prompt",
+              "value": "A calm and relaxing piano lofi hiphop"
+            },
+            {
+              "name": "style",
+              "value": "Classical"
+            },
+            {
+              "name": "title",
+              "value": "Peaceful Piano Meditation"
+            },
+            {
+              "name": "customMode",
+              "value": "true"
+            },
+            {
+              "name": "instrumental",
+              "value": "true"
+            },
+            {
+              "name": "model",
+              "value": "V3_5"
+            },
+            {
+              "name": "negativeTags",
+              "value": "Heavy Metal, Upbeat Drums"
+            },
+            {
+              "name": "callBackUrl",
+              "value": "https://api.example.com/callback"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        -80
+      ],
+      "id": "1b54cd05-0133-4169-a8fc-5b238b1b7256",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "url": "https://apibox.erweima.ai/api/v1/generate/record-info",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{ $json.data.taskId }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer f9db8c502604cb958dbf0c62ab9aab97"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        784,
+        -80
+      ],
+      "id": "62343cab-490e-493a-85a3-470875be10cc",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "prompt": "=Generate an image of {{ $json.data.response.sunoData[1].title }} in 16:9 layout to be used for my youtube long form video",
+        "options": {
+          "size": "1792x1024",
+          "style": "natural"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1088,
+        -64
+      ],
+      "id": "82c73a0c-a432-4769-8b69-ab7e6f404be9",
+      "name": "CriaImagem",
+      "credentials": {
+        "openAiApi": {
+          "id": "JO96jSLNRfkkZY7y",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/tmp/image.jpg",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        -64
+      ],
+      "id": "5527ff00-82d1-42a4-9647-ae65646b702d",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('HTTP Request1').item.json.data.response.sunoData[0].sourceAudioUrl }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1568,
+        -64
+      ],
+      "id": "c2ed8d58-93e5-4b58-9f91-8b9534685e8b",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/tmp/musicfile.mp3",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1824,
+        -64
+      ],
+      "id": "b64ccab8-7609-4f20-bd01-3a7a8d029656",
+      "name": "Read/Write Files from Disk1"
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -y -i /tmp/musicfile.mp3 -ss 0 -t {{ $('HTTP Request1').item.json.data.response.sunoData[0].duration }} -c copy /tmp/trimmedaudio.mp3"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2128,
+        -80
+      ],
+      "id": "68ced32f-4d9d-49d2-bcc9-83df0eb20b5f",
+      "name": "Execute Command"
+    },
+    {
+      "parameters": {
+        "command": "ffmpeg -y -loop 1 -i /tmp/image.jpg -i /tmp/trimmedaudio.mp3 -vf \"scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2\" -c:v libx264 -tune stillimage -c:a aac -b:a 192k -shortest -pix_fmt yuv420p -s 1280x720 /tmp/outputvideo.mp4"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2384,
+        -80
+      ],
+      "id": "0c4f2289-3f47-4e5f-acdf-cc7d1813d971",
+      "name": "EXECUTACOMANDO"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/tmp/outputvideo.mp4",
+        "options": {
+          "fileExtension": ".mp4"
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        2704,
+        -80
+      ],
+      "id": "6409d6cb-47d9-42ff-8261-4d2f22c62ffe",
+      "name": "Read/Write Files from Disk2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.upload-post.com/api/upload",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Apikey eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImlhYWNhZGVteWN1cnNvQGdtYWlsLmNvbSIsImV4cCI6NDkwNDA1NDY1MiwianRpIjoiYzIwM2IwOGEtZjA4MC00ZWY1LThkZjEtOGZmNGY5ZGYxZjRjIn0.czieOPs0k7jpu5FEpK9GVYMaCIWjsPzXt7GEWf5UauE"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "title",
+              "value": "TITULODOVIDEO"
+            },
+            {
+              "name": "user",
+              "value": "contaaula"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "video",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "platform[]",
+              "value": "youtube"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3008,
+        -80
+      ],
+      "id": "77dbb320-5c8d-4ddf-b3ce-1ff1905c1a4c",
+      "name": "UPLOAD-POST"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6b5b5d77-fd3d-497c-82e5-99fc74f53efb",
+              "name": "idea",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "b3edcd98-dfc8-4ff5-8937-ab1e8c57a41a",
+              "name": "Personagem",
+              "value": "Um lindo pato",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        304,
+        384
+      ],
+      "id": "f18f2932-54e4-454c-ad02-1ed1a0fa8d4f",
+      "name": "Set idea4"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.shotstack.io/edit/stage/render",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "SUpsuEpMlOe6A2xOSqbeBuIHiACEyF0CS755fTft"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n    \"timeline\": {\n        \"soundtrack\": {\n            \"src\": \"{{ $('HTTP Request4').item.json.data.response.sunoData[0].sourceAudioUrl }}\"\n           \n        },\n        \"tracks\": [\n            {\n                \"clips\": [\n                    {\n                        \"asset\": {\n                            \"type\": \"image\",\n                            \"src\": \"{{ $json.data[0].url }}\"\n                        },\n                        \"start\": 0,\n                        \"length\":  {{ $('HTTP Request4').item.json.data.response.sunoData[1].duration }}\n                    }\n                ]\n            }\n        ]\n    },\n    \"output\": {\n        \"format\": \"mp4\",\n        \"size\": {\n            \"width\": 1920,\n            \"height\": 1080\n        }\n    }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1568,
+        384
+      ],
+      "id": "2fc4a7c3-1a39-453c-9e12-59d75c88d7cb",
+      "name": "EditaShotstack5"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.shotstack.io/edit/stage/render/{{ $json.response.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "SUpsuEpMlOe6A2xOSqbeBuIHiACEyF0CS755fTft"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1824,
+        384
+      ],
+      "id": "4362b690-462c-470b-83d5-4c6891c0b191",
+      "name": "StatusShotstack8"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ideogram.ai/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Api-Key",
+              "value": "KcTpq2_lUvX0Ytbv3lrhoeWtetp5qes7DhInE7OhZ6ujWhyI3RuCLa6A5AhqR8cVIig53ksH1HnTP0v59a5HVA"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"image_request\": {\n    \"prompt\": \"Imagem de um menino de 7 anos no inverno, quarto escuro, com seu gatinho, com fone de ouvido sentado no quarto estudando estilo anime\",\n    \"aspect_ratio\": \"ASPECT_16_9\",\n    \"model\": \"V_2\",\n    \"magic_prompt_option\": \"AUTO\"\n  }\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1232,
+        384
+      ],
+      "id": "d93e0d52-3ced-44fe-ad55-88c35e71762d",
+      "name": "GeraPersonagem3"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://apibox.erweima.ai/api/v1/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer f9db8c502604cb958dbf0c62ab9aab97"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "prompt",
+              "value": "A calm and relaxing piano lofi hiphop"
+            },
+            {
+              "name": "style",
+              "value": "Classical"
+            },
+            {
+              "name": "title",
+              "value": "Peaceful Piano Meditation"
+            },
+            {
+              "name": "customMode",
+              "value": "true"
+            },
+            {
+              "name": "instrumental",
+              "value": "true"
+            },
+            {
+              "name": "model",
+              "value": "V3_5"
+            },
+            {
+              "name": "negativeTags",
+              "value": "Heavy Metal, Upbeat Drums"
+            },
+            {
+              "name": "callBackUrl",
+              "value": "https://api.example.com/callback"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        384
+      ],
+      "id": "ea2ac83d-4a6b-4368-bf31-0d41c94b7e09",
+      "name": "HTTP Request3"
+    },
+    {
+      "parameters": {
+        "url": "https://apibox.erweima.ai/api/v1/generate/record-info",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{ $json.data.taskId }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer f9db8c502604cb958dbf0c62ab9aab97"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        912,
+        384
+      ],
+      "id": "4c0dbb21-4778-4cfb-827b-e266f6fd1a65",
+      "name": "HTTP Request4"
+    },
+    {
+      "parameters": {
+        "content": ".pi.box"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        480,
+        -288
+      ],
+      "typeVersion": 1,
+      "id": "b318c37e-af10-4e78-9ba9-84d209d812cf",
+      "name": "Sticky Note"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Set idea4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "CriaImagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CriaImagem": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk1": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "EXECUTACOMANDO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EXECUTACOMANDO": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk2": {
+      "main": [
+        [
+          {
+            "node": "UPLOAD-POST",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set idea4": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EditaShotstack5": {
+      "main": [
+        [
+          {
+            "node": "StatusShotstack8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GeraPersonagem3": {
+      "main": [
+        [
+          {
+            "node": "EditaShotstack5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request4": {
+      "main": [
+        [
+          {
+            "node": "GeraPersonagem3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a69dfebf-2020-4efb-b3d7-9a07806252b1",
+  "meta": {
+    "instanceId": "86d0b539cdbfaefdd305e9f4d9320d6449af6a05b20f421bc7ca5b2501068fb2"
+  },
+  "id": "e1UDHZVKLPcv7Gpw",
+  "tags": []
+}

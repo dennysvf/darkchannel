@@ -1,0 +1,6 @@
+id,idea,caption,production,environment_prompt,publishing,final_output
+1,POV: You are Cleopatra preparing to meet Julius Caesar,for publishing,ok,"Opulent palace, golden décor, royal luxury",ok,
+2,POV: You are Napoleon leading troops into battle,Victory or defeat—history is watching,for production,"Battlefield, smoke, roaring cannons, military leader",pending,
+3,POV: You are Leonardo da Vinci sketching the Mona Lisa,A masterpiece in the making,for production,"Renaissance studio, candlelit, art supplies everywhere",pending,
+4,POV: You are Marie Curie discovering a glowing element,Science just changed forever,for production,"1800s lab, dimly lit, bubbling chemicals",pending,
+5,POV: You are Albert Einstein writing E=mc² on a chalkboard,Genius at work,for production,"1900s study, cluttered desk, stacks of equations",pending,
