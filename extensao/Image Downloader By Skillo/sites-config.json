@@ -1,0 +1,138 @@
+{
+  "sites": {
+    "metaai": {
+      "name": "Meta AI",
+      "url": "https://www.meta.ai/",
+      "enabled": true,
+      "config": {
+        "maxWaitTime": 40000,
+        "checkInterval": 3000,
+        "waitTimeBetweenPrompts": 4000,
+        "maxImages": 4,
+        "supportsVideo": true
+      },
+      "selectors": {
+        "textbox": [
+          "textarea[placeholder*='Ask Meta AI anything']",
+          "textarea[class*='xzsf02u']",
+          "div[contenteditable='true'][role='textbox']"
+        ],
+        "generateButton": [
+          "div[aria-label*='Send']",
+          "div[aria-label*='Submit']",
+          "button[aria-label*='Send']"
+        ],
+        "images": [
+          "img[alt*='Mídia gerada']",
+          "img[alt*='Generated image']"
+        ]
+      }
+    },
+    "imagefx": {
+      "name": "ImageFX (Google)",
+      "url": "https://aitestkitchen.withgoogle.com/tools/image-fx",
+      "enabled": true,
+      "config": {
+        "maxWaitTime": 45000,
+        "checkInterval": 3000,
+        "waitTimeBetweenPrompts": 5000,
+        "maxImages": 4,
+        "supportsVideo": false
+      },
+      "selectors": {
+        "textbox": [
+          "textarea[placeholder*='Describe']",
+          "textarea[placeholder*='what you']",
+          "textarea[aria-label*='prompt']",
+          "textarea"
+        ],
+        "generateButton": [
+          "button[aria-label*='Generate']",
+          "button[aria-label*='Create']",
+          "button[type='submit']"
+        ],
+        "images": [
+          "img[src*='googleusercontent.com']",
+          "img[src*='aitestkitchen']",
+          "div[role='img'] img"
+        ]
+      }
+    },
+    "whisk": {
+      "name": "Whisk (Google)",
+      "url": "https://labs.google/fx/tools/whisk",
+      "enabled": true,
+      "config": {
+        "maxWaitTime": 60000,
+        "checkInterval": 4000,
+        "waitTimeBetweenPrompts": 6000,
+        "maxImages": 3,
+        "supportsVideo": false
+      },
+      "selectors": {
+        "textbox": [
+          "textarea[placeholder*='Describe']",
+          "textarea[placeholder*='caption']",
+          "textarea[aria-label*='prompt']",
+          "textarea[aria-label*='describe']",
+          "textarea"
+        ],
+        "generateButton": [
+          "button[aria-label*='Whisk']",
+          "button[aria-label*='Generate']",
+          "button[aria-label*='Mix']",
+          "button[type='submit']"
+        ],
+        "images": [
+          "img[src*='googleusercontent.com']",
+          "img[src*='labs.google']",
+          "div[class*='result'] img",
+          "div[class*='output'] img"
+        ]
+      }
+    },
+    "piclumen": {
+      "name": "Piclumen",
+      "url": "https://piclumen.com/",
+      "enabled": true,
+      "config": {
+        "maxWaitTime": 50000,
+        "checkInterval": 3000,
+        "waitTimeBetweenPrompts": 5000,
+        "maxImages": 4,
+        "supportsVideo": false
+      },
+      "selectors": {
+        "textbox": [
+          "textarea[placeholder*='Enter']",
+          "textarea[placeholder*='Describe']",
+          "textarea[placeholder*='prompt']",
+          "input[placeholder*='Enter']",
+          "textarea"
+        ],
+        "generateButton": [
+          "button[aria-label*='Generate']",
+          "button[aria-label*='Create']",
+          "button[type='submit']"
+        ],
+        "images": [
+          "img[src*='piclumen']",
+          "img[src*='generated']",
+          "img[src*='blob:']",
+          "div[class*='result'] img",
+          "div[class*='output'] img"
+        ]
+      }
+    }
+  },
+  "global": {
+    "maxHistorySize": 10,
+    "downloadDelay": 2000,
+    "scrollBehavior": "smooth"
+  },
+  "notes": {
+    "selectorPriority": "Os seletores são testados na ordem listada. O primeiro que encontrar um elemento válido será usado.",
+    "timing": "Os tempos são em milissegundos. Ajuste conforme necessário baseado na velocidade do site.",
+    "images": "maxImages define quantas imagens novas serão baixadas por prompt."
+  }
+}

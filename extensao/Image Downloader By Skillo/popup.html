@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Image Downloader</title>
+  <meta charset="utf-8">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      width: 380px;
+      background: #000000;
+      color: #333;
+    }
+
+    .container {
+      background: white;
+      border-radius: 0;
+    }
+
+    .header {
+      background: #000000;
+      padding: 20px;
+      text-align: center;
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none"><path d="M0,0 L100,0 L100,100 L0,100 Z" fill="%23FF0000" opacity="0.2"/></svg>');
+      background-size: cover;
+    }
+
+    .logo-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+
+    .logo-img {
+      width: 60px;
+      height: 60px;
+      margin-right: 10px;
+    }
+
+    .header h3 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .header p {
+      margin: 8px 0 0 0;
+      font-size: 13px;
+      opacity: 0.9;
+    }
+
+    .header a {
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 500;
+      transition: opacity 0.3s;
+    }
+
+    .header a:hover {
+      opacity: 0.8;
+      text-decoration: underline;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    .instruction {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border-left: 4px solid #FF0000;
+    }
+
+    .instruction p {
+      font-size: 13px;
+      color: #555;
+      margin: 0;
+    }
+
+    textarea {
+      width: 100%;
+      height: 150px;
+      padding: 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      resize: vertical;
+      transition: border-color 0.3s;
+      margin-bottom: 15px;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #FF0000;
+    }
+
+    textarea::placeholder {
+      color: #999;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.3s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    #startButton {
+      background: linear-gradient(135deg, #FF0000 0%, #990000 100%);
+      color: white;
+    }
+
+    #startButton:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(255, 0, 0, 0.4);
+    }
+
+    #startButton:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #clearButton {
+      background: white;
+      color: #FF0000;
+      border: 2px solid #FF0000;
+      flex: 0.5;
+    }
+
+    #clearButton:hover {
+      background: #FF0000;
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(255, 0, 0, 0.4);
+    }
+
+    #clearButton.stop-mode {
+      background: #000000;
+      color: white;
+      border: 2px solid #000000;
+      flex: 1;
+    }
+
+    #clearButton.stop-mode:hover {
+      background: #333333;
+      border-color: #333333;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    }
+
+    #clearButton.stop-mode::before {
+      content: "⏹ ";
+    }
+
+    #progress {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      display: block;
+      border: 2px solid #e0e0e0;
+    }
+
+    #progress.show {
+      display: block;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .progress-text {
+      font-size: 14px;
+      color: #333;
+      margin-bottom: 10px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .progress-text::before {
+      content: "🔥";
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 24px;
+      background-color: #e0e0e0;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #FF0000 0%, #990000 100%);
+      transition: width 0.5s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 11px;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(255, 0, 0, 0.3);
+      width: 5%;
+    }
+
+    .progress-details {
+      font-size: 12px;
+      color: #666;
+      margin-top: 8px;
+      padding: 8px;
+      background: white;
+      border-radius: 6px;
+      border-left: 3px solid #FF0000;
+    }
+
+    #status {
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: none;
+      animation: slideIn 0.3s ease-out;
+    }
+
+    #status.info {
+      background-color: #e3f2fd;
+      color: #000000;
+      display: block;
+      border-left: 4px solid #000000;
+    }
+
+    #status.success {
+      background-color: #e8f5e9;
+      color: #388e3c;
+      display: block;
+      border-left: 4px solid #388e3c;
+    }
+
+    #status.error {
+      background-color: #ffebee;
+      color: #c62828;
+      display: block;
+      border-left: 4px solid #c62828;
+    }
+
+    #status.processing {
+      background-color: #fff3e0;
+      color: #FF0000;
+      display: block;
+      font-weight: 600;
+      border-left: 4px solid #FF0000;
+    }
+
+    .footer {
+      padding: 15px 20px;
+      background: #000000;
+      text-align: center;
+      font-size: 11px;
+      color: #ffffff;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .footer a {
+      color: #FF0000;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .footer a:hover {
+      text-decoration: underline;
+    }
+
+    .community-link {
+      padding: 10px;
+      background: #f8f9fa;
+      text-align: center;
+      border-radius: 8px;
+      margin-top: 15px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .community-link a {
+      color: #FF0000;
+      font-weight: bold;
+      text-decoration: none;
+    }
+
+    .community-link a:hover {
+      text-decoration: underline;
+    }
+
+    textarea::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    textarea::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    textarea::-webkit-scrollbar-thumb {
+      background: #FF0000;
+      border-radius: 4px;
+    }
+
+    textarea::-webkit-scrollbar-thumb:hover {
+      background: #990000;
+    }
+
+    #startButton::before {
+      content: "▶ ";
+    }
+
+    #clearButton::before {
+      content: "🗑 ";
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo-container">
+        <img src="images/cltube-logo.png" alt="CLTube Logo" class="logo-img">
+      </div>
+      <h3>Image Downloader</h3>
+      <p>Criado por <a href="#" target="_blank">@Skillo</a></p>
+    </div>
+
+    <div class="content">
+      <div class="instruction">
+        <p>💡 Insira um prompt por linha - Funciona em: Meta AI, Whisk e Piclumen</p>
+      </div>
+
+      <textarea id="prompts" placeholder="Exemplo:&#10;retrato realista de um leão com juba dourada&#10;cidade futurística com carros voadores à noite&#10;floresta mágica com árvores que brilham"></textarea>
+
+      <div class="button-group">
+        <button id="startButton">Iniciar Download</button>
+        <button id="clearButton">Limpar</button>
+      </div>
+
+      <div id="progress">
+        <div class="progress-text" id="progressText">Preparando...</div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill">5%</div>
+        </div>
+        <div class="progress-details" id="progressDetails">Aguardando iniciar automação...</div>
+      </div>
+
+      <div id="status"></div>
+      
+      <div class="community-link">
+        <p>Canal CLTube: <a href="https://www.youtube.com/@cltube-canaisdark" target="_blank">YouTube</a> | Grupo: <a href="https://chat.whatsapp.com/HHbb9e4QuKPGNdwKgOiz86" target="_blank">WhatsApp</a></p>
+      </div>
+    </div>
+
+    <div class="footer">
+      v2.4 ESTÁVEL | Ferramenta para a comunidade CLTube | Suporta: Meta AI, Whisk e Piclumen
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+  <script>
+    // Script para garantir que a barra de progresso funcione
+    document.addEventListener('DOMContentLoaded', function() {
+      const progressDiv = document.getElementById('progress');
+      const progressFill = document.getElementById('progressFill');
+      const progressText = document.getElementById('progressText');
+      const progressDetails = document.getElementById('progressDetails');
+      
+      // Mostrar barra de progresso por padrão
+      if (progressDiv) {
+        progressDiv.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

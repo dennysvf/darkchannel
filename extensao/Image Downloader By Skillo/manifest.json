@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "Multi-Site Image Downloader ESTÁVEL v2.4",
+  "version": "2.4.0",
+  "description": "Versão estável - Whisk, Piclumen e Meta AI funcionando perfeitamente.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://www.meta.ai/*",
+    "https://labs.google/*",
+    "https://www.piclumen.com/*",
+    "https://piclumen.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "images/icon16.png",
+      "48": "images/icon48.png",
+      "128": "images/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "images/icon16.png",
+    "48": "images/icon48.png",
+    "128": "images/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.meta.ai/*"],
+      "js": ["sites/content_metaai.js"]
+    },
+    {
+      "matches": ["https://labs.google/*"],
+      "js": ["sites/content_whisk.js"]
+    },
+    {
+      "matches": ["https://piclumen.com/*", "https://www.piclumen.com/*"],
+      "js": ["sites/content_piclumen.js"]
+    }
+  ]
+}
